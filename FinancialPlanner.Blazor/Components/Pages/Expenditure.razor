@@ -1,0 +1,222 @@
+﻿@page "/expenditure"
+@rendermode InteractiveServer
+@using FinancialPlanner.Blazor.Components.Models
+@using FinancialPlanner.Blazor.DataAccess
+@using FinancialPlanner.Blazor.DataAccess.Models
+@inject FinanceDbContext Db
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Components.Forms
+@using static FinancialPlanner.Blazor.DataAccess.Helpers.Enums
+
+<PageTitle>Expenditure</PageTitle>
+
+<h3>Add Expenditure</h3>
+
+<EditForm Model="@ExpenditureDto" OnValidSubmit="Submit" FormName="expenditure-new">
+    <div class="mb-3">
+        <label>Name</label>
+        <InputText class="form-control" @bind-Value="ExpenditureDto.Name" />
+    </div>
+
+    <div class="mb-3">
+        <label>Amount</label>
+        <InputNumber class="form-control" @bind-Value="ExpenditureDto.Amount" />
+    </div>
+
+    <div class="form-check mb-3">
+        <label class="form-check-label">
+            <InputCheckbox class="form-check-input" @bind-Value="ExpenditureDto.Recurring" />
+            Recurring
+        </label>
+    </div>
+
+    @if (!ExpenditureDto.Recurring)
+    {
+        <div class="mb-3">
+            <label>Date</label>
+            <InputDate class="form-control" @bind-Value="ExpenditureDto.Date" />
+        </div>
+    }
+    else
+    {
+        <div class="mb-3">
+            <label>Start Date</label>
+            <InputDate class="form-control" @bind-Value="ExpenditureDto.StartDate" />
+        </div>
+        <div class="mb-3">
+            <label>End Date</label>
+            <InputDate class="form-control" @bind-Value="ExpenditureDto.EndDate" />
+        </div>
+    }
+
+    <div class="mb-3">
+        <label>Category</label>
+        <InputSelect class="form-control" @bind-Value="ExpenditureDto.Category">
+            @foreach (var category in Enum.GetValues<Category>())
+            {
+                <option value="@category">@category</option>
+            }
+        </InputSelect>
+    </div>
+
+    <button type="submit">Submit</button>
+</EditForm>
+
+@if (!string.IsNullOrEmpty(_formError))
+{
+    <div class="alert alert-danger mb-3">@_formError</div>
+}
+
+<h4>All Expenditure Entries</h4>
+@if (expenditureList == null)
+{
+    <p>Loading...</p>
+}
+else if (!expenditureList.Any())
+{
+    <p>No expenditure entries found.</p>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Amount</th>
+                <th>Date</th>
+                <th>Start Date</th>
+                <th>End Date</th>
+                <th>Recurring</th>
+                <th>Category</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var exp in expenditureList)
+            {
+                <tr>
+                    <td>@exp.Name</td>
+                    <td>@exp.Amount</td>
+                    <td>@exp.Date.ToShortDateString()</td>
+                    <td>@exp.StartDate.Value.ToShortDateString()</td>
+                    <td>@exp.EndDate.Value.ToShortDateString()</td>
+                    <td>@(exp.Recurring ? "Yes" : "No")</td>
+                    <td>@exp.Category</td>
+                    <td>
+                        <button class="btn btn-danger btn-sm" @onclick="() => DeleteExpenditure(exp.Id)">Delete</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private ExpenditureDto ExpenditureDto = new()
+        {
+            Name = string.Empty,
+            Amount = 0,
+            Date = DateTime.Today,
+            StartDate = DateTime.Today,
+            EndDate = DateTime.Today,
+            Category = Category.Miscellaneous
+        };
+
+    private List<ExpenditureDto>? expenditureList;
+    private string _formError = string.Empty;
+
+    private DataAccess.Models.Expenditure ExpenditureDb { get; set; } = new();
+    private List<DataAccess.Models.Expenditure> ExpenditureDbList { get; set; } = new();
+    protected override async Task OnInitializedAsync()
+    {
+        ExpenditureDbList = await Db.Expenditures.ToListAsync();
+
+        // Map to DTOs if necessary
+        expenditureList = ExpenditureDbList.Select(e => new ExpenditureDto
+            {
+                Id = e.Id,
+                Name = e.Name,
+                Amount = e.Amount,
+                Date = e.Recurring ? DateTime.MinValue : e.Date ,
+                StartDate = e.Recurring ? e.StartDate : DateTime.MinValue,
+                EndDate = e.Recurring ? e.EndDate : DateTime.MinValue,
+                Recurring = e.Recurring,
+                Category = e.Category
+            }).ToList();
+    }
+
+    private async Task Submit()
+    {
+        if (string.IsNullOrWhiteSpace(ExpenditureDto.Name))
+        {
+            _formError = "Name is required.";
+            return;
+        }
+        if (ExpenditureDto.Amount <= 0)
+        {
+            _formError = "Amount must be greater than zero.";
+            return;
+        }
+        if (ExpenditureDto.Recurring && ExpenditureDto.EndDate < ExpenditureDto.StartDate)
+        {
+            _formError = "For recurring expenditure, End Date must be on or after Start Date.";
+            return;
+        }
+
+        var expenditureDb = new DataAccess.Models.Expenditure
+            {
+                Name = ExpenditureDto.Name,
+                Amount = ExpenditureDto.Amount,
+                Date = ExpenditureDto.Date,
+                StartDate = ExpenditureDto.StartDate.Value,
+                EndDate = ExpenditureDto.EndDate.Value,
+                Recurring = ExpenditureDto.Recurring,
+                Category = ExpenditureDto.Category
+            };
+
+        _formError = string.Empty;
+
+        Db.Expenditures.Add(expenditureDb);
+        await Db.SaveChangesAsync();
+
+        // Refresh the list
+        ExpenditureDbList = await Db.Expenditures.ToListAsync();
+
+        expenditureList = ExpenditureDbList.Select(e => new ExpenditureDto
+            {
+                Id = e.Id,
+                Name = e.Name,
+                Amount = e.Amount,
+                Date = e.Date,
+                StartDate = e.StartDate,
+                EndDate = e.EndDate,
+                Recurring = e.Recurring,
+                Category = e.Category
+            }).ToList();
+        // Reset the form
+        
+    }
+
+    private async Task DeleteExpenditure(int id)
+    {
+        var expenditure = await Db.Expenditures.FindAsync(id);
+        if (expenditure != null)
+        {
+            Db.Expenditures.Remove(expenditure);
+            await Db.SaveChangesAsync();
+
+            // Refresh the lists
+            ExpenditureDbList = await Db.Expenditures.ToListAsync();
+            expenditureList = ExpenditureDbList.Select(e => new ExpenditureDto
+                {
+                    Id = e.Id,
+                    Name = e.Name,
+                    Amount = e.Amount,
+                    Date = e.Date,
+                    StartDate = e.StartDate,
+                    EndDate = e.EndDate,
+                    Recurring = e.Recurring,
+                    Category = e.Category
+                }).ToList();
+        }
+    }
+}

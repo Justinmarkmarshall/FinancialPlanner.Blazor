@@ -1,0 +1,185 @@
+﻿@page "/income"
+@rendermode InteractiveServer //important to enable two way live binding on the client otherwise the dto is intantiated on each post losing all data
+@using FinancialPlanner.Blazor.Components.Models
+@using FinancialPlanner.Blazor.DataAccess
+@using FinancialPlanner.Blazor.DataAccess.Models
+@inject FinanceDbContext Db
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Components.Forms
+@using static FinancialPlanner.Blazor.DataAccess.Helpers.Enums
+
+<PageTitle>Income</PageTitle>
+
+<h3>Add Income</h3>
+
+<EditForm Model="@IncomeDto" OnValidSubmit="Submit" FormName="income-new">
+
+    <div class="mb-3">
+        <label>Name</label>
+        <InputText class="form-control" @bind-Value="IncomeDto.Name" />
+    </div>
+
+    <div class="mb-3">
+        <label>Amount</label>
+        <InputNumber class="form-control" @bind-Value="IncomeDto.Amount" />
+    </div>
+
+    <div class="form-check mb-3">
+        <label class="form-check-label">
+            <InputCheckbox class="form-check-input" @bind-Value="IncomeDto.Recurring" />
+            Recurring
+        </label>
+    </div>
+
+    @if (!IncomeDto.Recurring)
+    {
+        <div class="mb-3">
+            <label>Date</label>
+            <InputDate class="form-control" @bind-Value="IncomeDto.StartDate" />
+        </div>
+    }
+    else
+    {
+        <div class="mb-3">
+            <label>Start Date</label>
+            <InputDate class="form-control" @bind-Value="IncomeDto.StartDate" />
+        </div>
+        <div class="mb-3">
+            <label>End Date</label>
+            <InputDate class="form-control" @bind-Value="IncomeDto.EndDate" />
+        </div>
+    }    
+
+    <div class="mb-3">
+        <label>Category</label>
+        <InputSelect class="form-control" @bind-Value="IncomeDto.Category">
+            @foreach (var category in Enum.GetValues<IncomeCategory>())
+            {
+                <option value="@category">@category</option>
+            }
+        </InputSelect>
+    </div>
+
+    <button type="submit">Submit</button>
+
+    <button type="button" @onclick="()=>Console.WriteLine(IncomeDto.Name)">Test Name</button>
+
+
+</EditForm>
+
+<h4>All Income Entries</h4>
+
+@if (incomeList == null)
+{
+    <p>Loading...</p>
+}
+else if (!incomeList.Any())
+{
+    <p>No income entries found.</p>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Amount</th>
+                <th>Start Date</th>
+                <th>End Date</th>
+                <th>Recurring</th>
+                <th>Category</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var income in incomeList)
+            {
+                <tr>
+                    <td>@income.Name</td>
+                    <td>@income.Amount</td>
+                    <td>@income.StartDate.Value.ToShortDateString()</td>
+                    <td>@income.EndDate.Value.ToShortDateString()</td>
+                    <td>@(income.Recurring ? "Yes" : "No")</td>
+                    <td>@income.Category</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@if (!string.IsNullOrEmpty(_formError))
+{
+    <div class="alert alert-danger mb-3">@_formError</div>
+}
+
+@code {
+
+    private List<IncomeDto>? incomeList;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var incomeDbList = await Db.Incomes.ToListAsync();
+
+        incomeList = incomeDbList.Select(i => new IncomeDto
+        {
+            Name = i.Name,
+            Amount = i.Amount,
+            StartDate = i.StartDate,
+            EndDate = i.Recurring ? i.EndDate : DateTime.MinValue,
+            Recurring = i.Recurring,
+            Category = i.Category
+        }).ToList();
+    }
+
+    private DataAccess.Models.Income IncomeDb;
+
+    private Components.Models.IncomeDto IncomeDto = new()
+    {
+        Name = string.Empty,
+        Amount = 0,
+        StartDate = DateTime.Today,
+        EndDate = DateTime.Today,
+        Category = IncomeCategory.Other
+    };
+
+    private string _formError = string.Empty;
+
+    private async Task Submit()
+    {
+        if (string.IsNullOrWhiteSpace(IncomeDto!.Name))
+        {
+            _formError = "Name is required.";
+            return;
+        }
+        if (IncomeDto.Amount <= 0)
+        {
+            _formError = "Amount must be greater than zero.";
+            return;
+        }
+        if (IncomeDto.Recurring && IncomeDto.EndDate < IncomeDto.StartDate)
+        {
+            _formError = "For recurring income, End Date must be on or after Start Date.";
+            return;
+        }
+
+        if (!IncomeDto.StartDate.HasValue || !IncomeDto.EndDate.HasValue)
+        {
+            _formError = "Dates are required.";
+            return;
+        }
+
+        var incomeDb = new DataAccess.Models.Income
+        {
+            Name = IncomeDto.Name!,
+            Amount = IncomeDto.Amount,
+            StartDate = IncomeDto.StartDate.Value,
+            EndDate = IncomeDto.EndDate.Value,
+            Recurring = IncomeDto.Recurring,
+            Category = IncomeDto.Category
+        };
+
+        _formError = string.Empty;
+
+        Db.Incomes.Add(incomeDb);
+        await Db.SaveChangesAsync();       
+    }
+}

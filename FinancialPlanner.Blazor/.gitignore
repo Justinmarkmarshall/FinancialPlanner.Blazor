@@ -1,0 +1,63 @@
+## === Visual Studio / .NET ===
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Build output
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+[Dd]ebug*/
+[Rr]elease*/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+out/
+artifacts/
+[Tt]est[Rr]esult*/
+[Tt]est[Rr]esults/
+[Bb]uild[Ll]og.*
+
+# Coverage & test artifacts
+*.coverage
+*.coveragexml
+*.trx
+.coverage/
+coverage*/
+BenchmarkDotNet.Artifacts/
+
+# NuGet
+*.nupkg
+*.snupkg
+.nuget/packages/
+**/packages/*
+!**/packages/build/
+!**/packages/repositories.config
+*.nuget.props
+*.nuget.targets
+
+# ReSharper / Rider / CodeRush
+_ReSharper*/
+_ReSharper.Caches/
+*.DotSettings.user
+.idea/
+.cr/
+
+# NCrunch
+*.ncrunch*
+_NCrunch_*
+.*crunch*.local.xml
+
+# TeamCity
+_TeamCity*
+
+# Azure / ClickOnce
+csx/
+
+# Visual Studio working folders
+.vs/
