@@ -1,0 +1,473 @@
+﻿@page "/history"
+@attribute [Authorize]
+@* InteractiveServer render mode is required to enable event handlers like @onclick on buttons.
+   Without this, the toggle buttons for expanding income details would not respond to clicks. *@
+@rendermode InteractiveServer
+@using FinancialPlanner.Blazor.Components.Models
+@using FinancialPlanner.Blazor.Components.Models.Enums
+@using FinancialPlanner.Blazor.DataAccess
+@using FinancialPlanner.Blazor.Services
+@using Microsoft.EntityFrameworkCore
+@inject IHistoryService HistoryService
+@inject ICashflowService CashflowService
+@inject IDbService DbService
+
+<h3>History</h3>
+
+<div class="row align-items-end mb-3">
+    <div class="col-auto">
+        <label for="yearSelect" class="form-label">Year</label>
+        <InputSelect id="yearSelect" class="form-select" @bind-Value="selectedYear" @bind-Value:after="OnYearChanged">
+            @foreach (var year in availableYears)
+            {
+                <option value="@year">@year</option>
+            }
+        </InputSelect>
+    </div>
+</div>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Month</th>
+            <th>Projected Income</th>
+            <th>Projected Expenditure</th>
+            <th>Actual Difference</th>
+            <th>Income</th>
+            <th>Expenditure</th>
+            <th>Actual Difference</th>
+            <th>Notes</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var key in history.Keys)
+        {
+            <tr>
+                <td>@key</td>
+                <td>
+                    @history[key].ProjectedTotalIncome.ToString("C2")
+                    <button type="button" class="btn btn-sm btn-link" @onclick="() => ToggleProjectedIncomeDetails(key)">
+                        @(expandedProjectedIncomeIndexes.Contains(key) ? "-" : "+")
+                    </button>
+                </td>
+                <td>
+                    @history[key].ProjectedTotalExpenditure.ToString("C2")
+                    <button type="button" class="btn btn-sm btn-link" @onclick="() => ToggleProjectedExpenditureDetails(key)">
+                        @(expandedProjectedExpenditureIndexes.Contains(key) ? "-" : "+")
+                    </button>
+                    <button type="button" class="btn btn-sm btn-link" @onclick="() => ToggleProjectedExpenditureCategoryTotals(key)">
+                        @(expandedProjectedExpenditureCategoryTotals.Contains(key) ? "Categories ▲" : "Categories ▼")
+                    </button>
+                </td>
+                <td>@history[key].ProjectedSavings.ToString("C2")</td>
+                <td>
+                    @history[key].ActualTotalIncome.ToString("C2")
+                    <button type="button" class="btn btn-sm btn-link" @onclick="() => ToggleActualIncomeDetails(key)">
+                        @(expandedActualIncomeIndexes.Contains(key) ? "-" : "+")
+                    </button>
+                </td>
+                <td>
+                    @history[key].ActualTotalExpenditure.ToString("C2")
+                    <button type="button" class="btn btn-sm btn-link" @onclick="() => ToggleActualExpenditureDetails(key)">
+                        @(expandedActualExpenditureIndexes.Contains(key) ? "-" : "+")
+                    </button>
+                    <button type="button" class="btn btn-sm btn-link" @onclick="() => ToggleActualExpenditureCategoryTotals(key)">
+                        @(expandedActualExpenditureCategoryTotals.Contains(key) ? "Categories ▲" : "Categories ▼")
+                    </button>
+                </td>
+                <td>@history[key].ActualSavings.ToString("C2")</td>
+                <td>
+                    <div class="d-flex align-items-start gap-1">
+                        <span>@(string.IsNullOrEmpty(history[key].Notes) ? "-" : "📝")</span>
+                        <button type="button" class="btn btn-sm btn-link p-0" @onclick="() => ToggleNotes(key)">
+                            @(expandedNotesIndexes.Contains(key) ? "-" : "+")
+                        </button>
+                    </div>
+                </td>
+            </tr>
+            @if (expandedProjectedIncomeIndexes.Contains(key)
+                    || expandedProjectedExpenditureIndexes.Contains(key)
+                    || expandedActualIncomeIndexes.Contains(key)
+                    || expandedActualExpenditureIndexes.Contains(key)
+                    || expandedProjectedExpenditureCategoryTotals.Contains(key)
+                    || expandedActualExpenditureCategoryTotals.Contains(key)
+                    || expandedNotesIndexes.Contains(key))
+            {
+                <tr>
+                    <td></td>
+                    @if (expandedProjectedIncomeIndexes.Contains(key))
+                    {
+                        <td>
+                            @if (history[key].ProjectedIncomes != null && history[key].ProjectedIncomes.Any())
+                            {
+                                <ul class="mb-2">
+                                    @foreach (var income in history[key].ProjectedIncomes)
+                                    {
+                                        <li>
+                                            @income.Name: @income.Amount.ToString("C2")
+                                        </li>
+                                    }
+                                </ul>
+                            }
+                            else
+                            {
+                                <p><em>No incomes found for this month.</em></p>
+                            }
+                        </td>
+                    }
+                    else
+                    {
+                        <td></td>
+                    }
+                    @if (expandedProjectedExpenditureIndexes.Contains(key) || expandedProjectedExpenditureCategoryTotals.Contains(key))
+                    {
+                        <td>
+                            @if (expandedProjectedExpenditureCategoryTotals.Contains(key))
+                            {
+                                var totals = GetCategoryTotals(history[key].ProjectedExpenditures);
+                                if (totals.Any())
+                                {
+                                    <div class="mb-2">
+                                        <strong>Projected Expenditure Totals by Category</strong>
+                                        <ul class="mb-2">
+                                            @foreach (var item in totals)
+                                            {
+                                                <li>@item.Category: @item.Amount.ToString("C2")</li>
+                                            }
+                                        </ul>
+                                    </div>
+                                }
+                            }
+
+                            @if (expandedProjectedExpenditureIndexes.Contains(key))
+                            {
+                                var expenditures = history[key].ProjectedExpenditures ?? new List<ExpenditureDto>();
+                                if (expenditures.Any())
+                                {
+                                    @foreach (var group in expenditures.GroupBy(e => e.Category).OrderBy(g => g.Key.ToString()))
+                                    {
+                                        <div class="mb-2">
+                                            <strong>@group.Key (@group.Sum(e => e.Amount).ToString("C2"))</strong>
+                                            <ul class="mb-2">
+                                                @foreach (var expenditure in group.OrderBy(e => e.Name))
+                                                {
+                                                    <li>@expenditure.Name (@expenditure.Category): @expenditure.Amount.ToString("C2")</li>
+                                                }
+                                            </ul>
+                                        </div>
+                                    }
+                                }
+                                else
+                                {
+                                    <p><em>No Expenditures found for this month.</em></p>
+                                }
+                            }
+                        </td>
+                    }
+                    else
+                    {
+                        <td></td>
+                    }
+                    <td></td>
+                    @* Actual income details *@
+                    @if (expandedActualIncomeIndexes.Contains(key))
+                    {
+                        <td>
+                            @if (history[key].ActualIncomes != null && history[key].ActualIncomes.Any())
+                            {
+                                <ul class="mb-2">
+                                    @foreach (var income in history[key].ActualIncomes)
+                                    {
+                                        <li>@income.Name (@income.Category): @income.Amount.ToString("C2")</li>
+                                    }
+                                </ul>
+                            }
+                            else
+                            {
+                                <p><em>No incomes found for this month.</em></p>
+                            }
+                        </td>
+                    }
+                    else
+                    {
+                        <td></td>
+                    }
+                    @* Actual expenditure details *@
+                    @if (expandedActualExpenditureIndexes.Contains(key) || expandedActualExpenditureCategoryTotals.Contains(key))
+                    {
+                        <td>
+                            @if (expandedActualExpenditureCategoryTotals.Contains(key))
+                            {
+                                var totals = GetCategoryTotals(history[key].ActualExpenditures);
+                                if (totals.Any())
+                                {
+                                    <div class="mb-2">
+                                        <strong>Actual Expenditure Totals by Category</strong>
+                                        <ul class="mb-2">
+                                            @foreach (var item in totals)
+                                            {
+                                                <li>@item.Category: @item.Amount.ToString("C2")</li>
+                                            }
+                                        </ul>
+                                    </div>
+                                }
+                            }
+
+                            @if (expandedActualExpenditureIndexes.Contains(key))
+                            {
+                                var expenditures = history[key].ActualExpenditures ?? new List<ExpenditureDto>();
+                                if (expenditures.Any())
+                                {
+                                    @foreach (var group in expenditures.GroupBy(e => e.Category).OrderBy(g => g.Key.ToString()))
+                                    {
+                                        <div class="mb-2">
+                                            <strong>@group.Key (@group.Sum(e => e.Amount).ToString("C2"))</strong>
+                                            <ul class="mb-2">
+                                                @foreach (var expenditure in group.OrderBy(e => e.Name))
+                                                {
+                                                    <li>@expenditure.Name (@expenditure.Category): @expenditure.Amount.ToString("C2")</li>
+                                                }
+                                            </ul>
+                                        </div>
+                                    }
+                                }
+                                else
+                                {
+                                    <p><em>No Expenditures found for this month.</em></p>
+                                }
+                            }
+                        </td>
+                    }
+                    else
+                    {
+                        <td></td>
+                    }
+
+                    @* Actual Difference column for the details row *@
+                    <td></td>
+
+                    @* Notes column for the details row *@
+                    @if (expandedNotesIndexes.Contains(key))
+                    {
+                        <td>
+                            @if (editingNotesMonthKey == key)
+                            {
+                                <div class="d-flex flex-column gap-1">
+                                    <InputTextArea class="form-control form-control-sm" @bind-Value="editingNotes" rows="3" />
+                                    <div class="d-flex gap-1">
+                                        <button class="btn btn-success btn-sm" @onclick="() => SaveNotes(key)">Save</button>
+                                        <button class="btn btn-secondary btn-sm" @onclick="CancelEditNotes">Cancel</button>
+                                    </div>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="d-flex flex-column gap-1">
+                                    <span style="white-space: pre-wrap;">@(string.IsNullOrEmpty(history[key].Notes) ? "No notes" : history[key].Notes)</span>
+                                    <button type="button" class="btn btn-sm btn-primary" @onclick="() => StartEditNotes(key)">
+                                        ✏️ Edit Notes
+                                    </button>
+                                </div>
+                            }
+                        </td>
+                    }
+                    else
+                    {
+                        <td></td>
+                    }
+                </tr>
+            }
+        }
+    </tbody>
+</table>
+
+@code {
+
+    private Dictionary<string, MonthDto> history = new();
+    private Dictionary<string, BankStatementDto> bankStatements = new();
+    private DateTime today = DateTime.Today;
+    private DateTime dateOfFinancePlannerInception = new DateTime(2025, 9, 1);
+    private HashSet<string> expandedProjectedIncomeIndexes = new();
+    private HashSet<string> expandedProjectedExpenditureIndexes = new();
+    private HashSet<string> expandedActualIncomeIndexes = new();
+    private HashSet<string> expandedActualExpenditureIndexes = new();
+    private HashSet<string> expandedProjectedExpenditureCategoryTotals = new();
+    private HashSet<string> expandedActualExpenditureCategoryTotals = new();
+    private HashSet<string> expandedNotesIndexes = new();
+    private List<int> availableYears = new();
+    private int selectedYear;
+
+    private string? editingNotesMonthKey = null;
+    private string editingNotes = string.Empty;
+
+    /// <summary>
+    /// For each month, now once the bank statements have been imported, there will be actual data to compare against.
+    /// </summary>
+    /// <returns></returns>
+    protected override async Task OnInitializedAsync()
+    {
+        availableYears = Enumerable.Range(2023, (DateTime.Today.Year - 2023) + 1)
+            .OrderByDescending(y => y)
+            .ToList();
+
+        selectedYear = DateTime.Today.Year;
+
+        await LoadHistoryForYear(selectedYear);
+
+    }
+
+    private async Task LoadHistoryForYear(int year)
+    {
+        history.Clear();
+        bankStatements.Clear();
+
+        expandedProjectedIncomeIndexes.Clear();
+        expandedProjectedExpenditureIndexes.Clear();
+        expandedActualIncomeIndexes.Clear();
+        expandedActualExpenditureIndexes.Clear();
+        expandedProjectedExpenditureCategoryTotals.Clear();
+        expandedActualExpenditureCategoryTotals.Clear();
+        expandedNotesIndexes.Clear();
+        editingNotesMonthKey = null;
+
+        var rangeStart = new DateTime(year, 1, 1);
+        var rangeEnd = new DateTime(year, 12, 31);
+
+        var historicalMonths = HistoryService.GetHistoricalMonths(rangeStart, rangeEnd);
+
+        var months = DbService.GetOrCreateMonths(historicalMonths);
+
+        var projectedExpenditures = DbService.GetExpenditureDtos(Enums.CashflowType.Projected);
+        var projectedIncomes = DbService.GetIncomeDtos(Enums.CashflowType.Projected);
+
+        var actualExpenditures = DbService.GetExpenditureDtos(Enums.CashflowType.Actual);
+        var actualIncomes = DbService.GetIncomeDtos(Enums.CashflowType.Actual);
+
+        foreach (var month in months)
+        {
+            month.ProjectedExpenditures = CashflowService.GetCashflowForMonth(month, projectedExpenditures.Cast<CashflowDto>().ToList()).Cast<ExpenditureDto>().ToList() ?? new List<ExpenditureDto>();
+            month.ProjectedTotalExpenditure = month.ProjectedExpenditures.Sum(e => e.Amount);
+
+            month.ProjectedIncomes = CashflowService.GetCashflowForMonth(month, projectedIncomes.Cast<CashflowDto>().ToList()).Cast<IncomeDto>().ToList() ?? new List<IncomeDto>();
+            month.ProjectedTotalIncome = month.ProjectedIncomes.Sum(e => e.Amount);
+            month.ProjectedSavings = month.ProjectedTotalIncome - month.ProjectedTotalExpenditure;
+
+            month.ActualIncomes = CashflowService.GetCashflowForMonth(month, actualIncomes.Cast<CashflowDto>().ToList()).Cast<IncomeDto>().ToList() ?? new List<IncomeDto>();
+            month.ActualExpenditures = CashflowService.GetCashflowForMonth(month, actualExpenditures.Cast<CashflowDto>().ToList()).Cast<ExpenditureDto>().ToList() ?? new List<ExpenditureDto>();
+            month.ActualTotalIncome = month.ActualIncomes.Sum(i => i.Amount);
+            month.ActualTotalExpenditure = month.ActualExpenditures.Sum(e => e.Amount);
+            month.ActualSavings = month.ActualTotalIncome - month.ActualTotalExpenditure;
+
+            history[month.Name] = month;
+            bankStatements[month.Name] = DbService.GetBankStatementForMonth(month.Id) ?? new BankStatementDto();
+        }
+    }
+
+    public void ToggleProjectedIncomeDetails(string monthName)
+    {
+        if (!expandedProjectedIncomeIndexes.Add(monthName))
+            expandedProjectedIncomeIndexes.Remove(monthName);
+    }
+
+    public void ToggleProjectedExpenditureDetails(string monthName)
+    {
+        if (!expandedProjectedExpenditureIndexes.Add(monthName))
+            expandedProjectedExpenditureIndexes.Remove(monthName);
+    }
+
+    public void ToggleActualIncomeDetails(string monthName)
+    {
+        if (!expandedActualIncomeIndexes.Add(monthName))
+        {
+            expandedActualIncomeIndexes.Remove(monthName);
+        }
+    }
+
+    public void ToggleActualExpenditureDetails(string monthName)
+    {
+        if (!expandedActualExpenditureIndexes.Add(monthName))
+        {
+            expandedActualExpenditureIndexes.Remove(monthName);
+        }
+    }
+
+    public void ToggleProjectedExpenditureCategoryTotals(string monthName)
+    {
+        if (!expandedProjectedExpenditureCategoryTotals.Add(monthName))
+        {
+            expandedProjectedExpenditureCategoryTotals.Remove(monthName);
+        }
+    }
+
+    public void ToggleActualExpenditureCategoryTotals(string monthName)
+    {
+        if (!expandedActualExpenditureCategoryTotals.Add(monthName))
+        {
+            expandedActualExpenditureCategoryTotals.Remove(monthName);
+        }
+    }
+
+    public void ToggleNotes(string monthName)
+    {
+        if (!expandedNotesIndexes.Add(monthName))
+        {
+            expandedNotesIndexes.Remove(monthName);
+            // Cancel editing if collapsing
+            if (editingNotesMonthKey == monthName)
+            {
+                CancelEditNotes();
+            }
+        }
+    }
+
+    private List<(string Category, decimal Amount)> GetCategoryTotals(List<ExpenditureDto>? expenditures)
+    {
+        if (expenditures == null || expenditures.Count == 0)
+        {
+            return new List<(string Category, decimal Amount)>();
+        }
+
+        return expenditures
+            .GroupBy(e => e.Category)
+            .Select(g => (Category: g.Key.ToString(), Amount: g.Sum(x => x.Amount)))
+            .OrderByDescending(x => x.Amount)
+            .ToList();
+    }
+
+    private async Task OnYearChanged()
+    {
+        await LoadHistoryForYear(selectedYear);
+    }
+
+    private void StartEditNotes(string monthKey)
+    {
+        editingNotesMonthKey = monthKey;
+        editingNotes = history[monthKey].Notes ?? string.Empty;
+    }
+
+    private void CancelEditNotes()
+    {
+        editingNotesMonthKey = null;
+        editingNotes = string.Empty;
+    }
+
+    private void SaveNotes(string monthKey)
+    {
+        if (history.TryGetValue(monthKey, out var month))
+        {
+            DbService.UpdateMonthNotes(month.Id, editingNotes);
+            month.Notes = editingNotes;
+        }
+
+        editingNotesMonthKey = null;
+        editingNotes = string.Empty;
+    }
+
+
+    private class MonthlyHistory
+    {
+        public string Month { get; set; } = "";
+        public decimal Income { get; set; }
+        public decimal Expenditure { get; set; }
+    }
+}

@@ -1,0 +1,264 @@
+﻿@page "/upload"
+@attribute [Authorize]
+@* InteractiveServer render mode is required to enable file upload functionality and event handlers. *@
+@rendermode InteractiveServer
+@using System.Globalization
+@using FinancialPlanner.Blazor.Components.Models
+@using FinancialPlanner.Blazor.Components.Models.Enums
+@using FinancialPlanner.Blazor.DataAccess
+@using FinancialPlanner.Blazor.DataAccess.Models
+@using FinancialPlanner.Blazor.Services
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.EntityFrameworkCore
+@using static FinancialPlanner.Blazor.Components.Models.Enums.Enums
+@inject FinanceDbContext Db
+@inject IDbService DbService
+@inject IHistoryService HistoryService
+@inject IBankStatementImportService BankStatementImportService
+
+<PageTitle>Bank Statement Upload</PageTitle>
+
+<h3>Upload Bank Statement</h3>
+
+<div class="mb-4">
+    <EditForm Model="@uploadModel" OnValidSubmit="HandleFileUpload" FormName="upload-form">
+        <div class="mb-3">
+            <label for="fileUpload" class="form-label">Select Bank Statement File (CSV)</label>
+            <InputFile id="fileUpload"
+            class="form-control"
+            OnChange="OnFileSelected"
+            accept=".csv,.txt"
+            multiple="false" />
+            <div class="form-text">Supported formats: CSV, TXT</div>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Date Format in File</label>
+            <InputSelect class="form-control" @bind-Value="uploadModel.DateFormat">
+                <option value="dd/MM/yyyy">DD/MM/YYYY (UK format)</option>
+                <option value="MM/dd/yyyy">MM/DD/YYYY (US format)</option>
+                <option value="yyyy-MM-dd">YYYY-MM-DD (ISO format)</option>
+            </InputSelect>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Amount Column (0-based index)</label>
+            <InputNumber class="form-control" @bind-Value="uploadModel.AmountColumnIndex" min="0" />
+            <div class="form-text">Which column contains the amount (0 = first column, 1 = second column, etc.)</div>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Date Column (0-based index)</label>
+            <InputNumber class="form-control" @bind-Value="uploadModel.DateColumnIndex" min="0" />
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Description Column (0-based index)</label>
+            <InputNumber class="form-control" @bind-Value="uploadModel.DescriptionColumnIndex" min="0" />
+        </div>
+
+        <div class="form-check mb-3">
+            <InputCheckbox class="form-check-input" @bind-Value="uploadModel.HasHeaderRow" id="hasHeader" />
+            <label class="form-check-label" for="hasHeader">
+                File has header row
+            </label>
+        </div>
+
+        <button type="submit" class="btn btn-primary" disabled="@(selectedFile == null || isProcessing)">
+            @if (isProcessing)
+            {
+                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                <text> Processing...</text>
+            }
+            else
+            {
+                <text>Upload and Process</text>
+            }
+        </button>
+    </EditForm>
+</div>
+
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="alert alert-danger">
+        <strong>Error:</strong> @errorMessage
+    </div>
+}
+
+@if (!string.IsNullOrEmpty(successMessage))
+{
+    <div class="alert alert-success">
+        <strong>Success:</strong> @successMessage
+    </div>
+}
+
+@if (cashFlowDtos.Any())
+{
+    <h4>Preview Transactions (@cashFlowDtos.Count items)</h4>
+    <div class="alert alert-info">
+        <strong>Preview:</strong> Review the transactions below before confirming import.
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Description</th>
+                    <th>Amount</th>
+                    <th>Type</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var transaction in cashFlowDtos.Take(10))
+                {
+                    <tr>
+                        <td>@transaction.PaymentDate.ToShortDateString()</td>
+                        <td>@transaction.Name</td>
+                        <td class="@(transaction.Amount >= 0 ? "text-success" : "text-danger")">
+                            @transaction.Amount.ToString("C2")
+                        </td>
+                        <td>
+                            <span class="badge @(transaction.Amount >= 0 ? "bg-success" : "bg-danger")">
+                                @(transaction.Amount >= 0 ? "Income" : "Expenditure")
+                            </span>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @if (previewTransactions.Count > 10)
+    {
+        <p class="text-muted">Showing first 10 of @previewTransactions.Count transactions...</p>
+    }
+
+    <div class="mt-3">
+        <button type="button" class="btn btn-success" @onclick="ConfirmImport" disabled="@isProcessing">
+            Confirm Import (@cashFlowDtos.Count transactions)
+        </button>
+        <button type="button" class="btn btn-secondary" @onclick="ClearPreview">
+            Cancel
+        </button>
+    </div>
+}
+
+@code {
+
+    private IBrowserFile? selectedFile;
+    private bool isProcessing = false;
+    private string errorMessage = string.Empty;
+    private string successMessage = string.Empty;
+    private List<BankTransaction> previewTransactions = new();
+    private List<CashflowDto> cashFlowDtos = new();
+    private DateTime? startDate = null;
+    private DateTime? endDate = null;
+    private BankStatement BankStatementDb { get; set; } = new();
+
+    private UploadModel uploadModel = new()
+        {
+            DateFormat = "dd/MM/yyyy",
+            AmountColumnIndex = 1,
+            DateColumnIndex = 0,
+            DescriptionColumnIndex = 2,
+            HasHeaderRow = true
+        };
+
+    private void OnFileSelected(InputFileChangeEventArgs e)
+    {
+        selectedFile = e.File;
+        errorMessage = string.Empty;
+        successMessage = string.Empty;
+        ClearPreview();
+    }
+
+    private async Task HandleFileUpload()
+    {
+        if (selectedFile == null) return;
+
+        isProcessing = true;
+        errorMessage = string.Empty;
+        successMessage = string.Empty;
+
+        try
+        {
+            cashFlowDtos = await BankStatementImportService.ProcessBankStatementFile(selectedFile, uploadModel);
+            if (cashFlowDtos.Any())
+            {
+                successMessage = $"Great, we have {cashFlowDtos.Count} transactions ready to import.";   
+            }
+            else
+            {
+                errorMessage = "No transactions found in the file.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error processing file: {ex.Message}";
+        }
+        finally
+        {
+            isProcessing = false;
+        }
+    }    
+
+    private void ConfirmImport()
+    {
+        if (!cashFlowDtos.Any()) return;
+
+        isProcessing = true;
+        errorMessage = string.Empty;
+
+        try
+        {
+
+            if (cashFlowDtos.Any())
+            {
+                successMessage = $"File processed successfully! Found {cashFlowDtos.Count} transactions.";
+               
+                var incomeDtos = cashFlowDtos.OfType<IncomeDto>().ToList();
+                DbService.UpsertIncomeDtos(incomeDtos);
+
+                var expenditureDtos = cashFlowDtos.OfType<ExpenditureDto>().ToList();
+                DbService.UpsertExpenditureDtos(expenditureDtos);
+            }
+            successMessage = $"Successfully imported {cashFlowDtos.Count} BankStatements transactions";
+            ClearPreview();
+            selectedFile = null;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error importing transactions: {ex.Message}";
+        }
+        finally
+        {
+            isProcessing = false;
+            // reset if we need to import again.
+            startDate = null;
+            endDate = null;
+        }
+    }
+
+    private void ClearPreview()
+    {
+        previewTransactions.Clear();
+    }
+
+    public class UploadModel
+    {
+        public string DateFormat { get; set; } = "dd/MM/yyyy";
+        public int AmountColumnIndex { get; set; } = 1;
+        public int DateColumnIndex { get; set; } = 0;
+        public int DescriptionColumnIndex { get; set; } = 2;
+        public bool HasHeaderRow { get; set; } = true;
+    }
+
+    public class BankTransaction
+    {
+        public DateTime Date { get; set; }
+        public string Description { get; set; } = string.Empty;
+        public decimal Amount { get; set; }
+        public string SuggestedCategory { get; set; } = string.Empty;
+    }
+}

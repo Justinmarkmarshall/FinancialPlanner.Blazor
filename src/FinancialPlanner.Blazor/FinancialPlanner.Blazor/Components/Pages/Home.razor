@@ -1,0 +1,338 @@
+﻿@page "/"
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+@using FinancialPlanner.Blazor.Components.Models
+@using FinancialPlanner.Blazor.Components.Models.Enums
+@using FinancialPlanner.Blazor.DataAccess
+@using FinancialPlanner.Blazor.DataAccess.Models
+@using FinancialPlanner.Blazor.Services
+@using Microsoft.EntityFrameworkCore
+@using static FinancialPlanner.Blazor.Components.Models.Enums.Enums
+@inject FinanceDbContext DbContext
+@inject IDbService DbService
+@inject ICashflowService CashflowService
+@inject ICurrentUserService CurrentUserService
+
+<h3>Finance Planner - Months Overview</h3>
+
+@if (isLoading)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <h4>Bank Balance: @bankBalanceForToday.ToString("C") for Today: @today.Date.ToShortDateString()</h4>
+
+    @if (expendituresBeforeMonthEnd.Any() && currentMonthDto != null)
+    {
+        <table class="table table-borderless">
+            <tbody>
+                <tr>
+                    <td style="vertical-align: top; width: 60%;">
+                        <h5>Expenditures before end of this month: £@expendituresBeforeMonthEnd.Sum(e => e.Amount).ToString("F2")</h5>
+                        <ul class="list-unstyled">
+                            @foreach (var exp in expendituresBeforeMonthEnd)
+                            {
+                                <li>@exp.Amount.ToString("C") - @exp.Name (day @exp.PaymentDate.Day)</li>
+                            }
+                        </ul>
+
+                        <h5>Expenditures already paid: £@expendituresPaidByToday.Sum(e => e.Amount).ToString("F2")</h5>
+                        <ul class="list-unstyled">
+                            @foreach (var exp in expendituresPaidByToday)
+                            {
+                                <li>@exp.Amount.ToString("C") - @exp.Name (day @exp.PaymentDate.Day)</li>
+                            }
+                        </ul>
+                    </td>
+                    <td style="vertical-align: top; width: 40%;">
+                        <h5>Notes for @currentMonthDto.Name</h5>
+                        @if (isEditingNotes)
+                        {
+                            <div class="d-flex flex-column gap-2">
+                                <InputTextArea class="form-control" @bind-Value="editingNotes" rows="6" />
+                                <div class="d-flex gap-1">
+                                    <button class="btn btn-success btn-sm" @onclick="SaveNotes">Save</button>
+                                    <button class="btn btn-secondary btn-sm" @onclick="CancelEditNotes">Cancel</button>
+                                </div>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="d-flex flex-column gap-2">
+                                <span style="white-space: pre-wrap;">@(string.IsNullOrEmpty(currentMonthDto.Notes) ? "No notes for this month" : currentMonthDto.Notes)</span>
+                                <button type="button" class="btn btn-sm btn-primary" @onclick="StartEditNotes">
+                                    ✏️ Edit Notes
+                                </button>
+                            </div>
+                        }
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    }
+
+    @if (monthDtos == null || !monthDtos.Any())
+    {
+        <p>No months found.</p>
+    }
+    else
+    {
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Month Name</th>
+                    <th>End Date</th>
+                    <th>Projected Total Income</th>
+                    <th>Projected Total Expenditure</th>
+                    <th>Projected Savings</th>
+                    <th>Running Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var month in monthDtos)
+                {
+                    <tr>
+                        <td>@month.Name</td>
+                        <td>@month.EndDate.ToShortDateString()</td>
+                        <td>@month.ProjectedTotalIncome.ToString("C")</td>
+                        <td>@month.ProjectedTotalExpenditure.ToString("C")</td>
+                        <td>@month.ProjectedSavings.ToString("C")</td>
+                        <td>@month.RunningTotalSavings.ToString("C")</td>
+                    </tr>
+                    <tr>
+                        <td colspan="6">
+                            <strong>Expenditure by Category (% of Income):</strong>
+                            <ul class="mb-2">
+                                @foreach (var cat in GetCategoryPercentages(month))
+                                {
+                                    <li>
+                                        <strong>@cat.Category</strong> (@cat.Percentage.ToString("F1")%) - @cat.Amount.ToString("C")
+                                        @if (cat.Category != "Leftover" && cat.Category != "Total" && cat.Expenditures.Any())
+                                        {
+                                            <ul class="mb-0 ms-3">
+                                                @foreach (var exp in cat.Expenditures)
+                                                {
+                                                    <li class="text-muted">@exp.Name - @exp.Amount.ToString("C") (day @exp.PaymentDate.Day)</li>
+                                                }
+                                            </ul>
+                                        }
+                                    </li>
+                                }
+                            </ul>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+}
+
+@code {
+    private User? currentUser;
+    private bool isLoading = true;
+
+    private List<Month>? DbMonths;
+    private IEnumerable<ExpenditureDto>? expenditures;
+    private IEnumerable<IncomeDto>? incomes;
+    private List<ExpenditureDto> expendituresBeforeMonthEnd = new();
+    private List<ExpenditureDto> expendituresPaidByToday = new();
+    private decimal bankBalanceForToday;
+    private DateTime today;
+    private List<MonthDto> monthDtos = new();
+    private MonthDto? currentMonthDto;
+
+    private bool isEditingNotes = false;
+    private string editingNotes = string.Empty;
+
+    private decimal runningTotal = 400;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            currentUser = (await CurrentUserService.GetCurrentUserAsync())!;
+
+            today = DateTime.Today;
+
+            DbMonths = await DbContext.Months
+                .Where(month => month.EndDate >= today && month.UserId == currentUser.Id)
+                .OrderBy(m => m.StartDate)
+                .ToListAsync();
+
+            expenditures = DbService.GetExpenditureDtos();
+            incomes = DbService.GetIncomeDtos();
+
+            foreach (var month in DbMonths)
+            {
+                var monthDto = new MonthDto
+                {
+                    Id = month.Id,
+                    Name = month.Name,
+                    StartDate = month.StartDate,
+                    EndDate = month.EndDate,
+                    ProjectedSavings = month.ProjectedSavings,
+                    ProjectedTotalExpenditure = month.ProjectedTotalExpenditure,
+                    ProjectedTotalIncome = month.ProjectedTotalIncome,
+                    Notes = month.Notes
+                };
+
+                monthDto.ProjectedExpenditures = CashflowService.GetCashflowForMonth(monthDto, expenditures.Cast<CashflowDto>().ToList())
+                   .Cast<ExpenditureDto>().ToList();
+
+                monthDto.ProjectedTotalExpenditure = monthDto.ProjectedExpenditures.Sum(e => e.Amount);
+
+                monthDto.ProjectedIncomes = CashflowService.GetCashflowForMonth(monthDto, incomes.Cast<CashflowDto>().ToList())
+                    .Cast<IncomeDto>().ToList();
+
+                monthDto.ProjectedTotalIncome = monthDto.ProjectedIncomes.Sum(i => i.Amount);
+
+                monthDto.ProjectedSavings = monthDto.ProjectedTotalIncome - monthDto.ProjectedTotalExpenditure;
+                monthDto.RunningTotalSavings = runningTotal + monthDto.ProjectedSavings;
+
+                runningTotal += monthDto.ProjectedSavings;
+
+                if (month.StartDate.Date <= today.Date && month.EndDate.Date >= today.Date)
+                {
+                    currentMonthDto = monthDto;
+
+                    var foodBudget = monthDto.ProjectedExpenditures
+                        .Where(e => e.Category == CategoryType.Groceries.ToString())
+                        .Sum(e => e.Amount);
+                    var daysInMonth = DateTime.DaysInMonth(today.Year, today.Month);
+                    var dailyFoodBudget = daysInMonth > 0 ? foodBudget / daysInMonth : 0;
+
+                    expendituresPaidByToday.Add(new ExpenditureDto
+                    {
+                        Name = "Food Budget Used",
+                        Amount = dailyFoodBudget * today.Day,
+                        PaymentDate = today,
+                        StartDate = monthDto.StartDate,
+                        EndDate = monthDto.EndDate,
+                        Recurring = false,
+                        Category = CategoryType.Groceries.ToString()
+                    });
+
+                    expendituresBeforeMonthEnd.Add(new ExpenditureDto
+                    {
+                        Name = "Food Budget Remaining",
+                        Amount = dailyFoodBudget * (daysInMonth - today.Day),
+                        PaymentDate = today,
+                        StartDate = monthDto.StartDate,
+                        EndDate = monthDto.EndDate,
+                        Recurring = false,
+                        Category = CategoryType.Groceries.ToString()
+                    });
+
+                    foreach (var exp in monthDto.ProjectedExpenditures.OrderBy(r => r.StartDate?.Day ?? 0))
+                    {
+                        if (exp.PaymentDate.Day > today.Day && exp.PaymentDate.Day <= monthDto.EndDate.Day)
+                        {
+                            if (exp.Category != CategoryType.Groceries.ToString())
+                            {
+                                expendituresBeforeMonthEnd.Add(exp);
+                            }
+                        }
+                        else if (exp.PaymentDate.Day <= today.Day && exp.PaymentDate.Day >= monthDto.StartDate.Day)
+                        {
+                            if (exp.Category != CategoryType.Groceries.ToString())
+                            {
+                                expendituresPaidByToday.Add(exp);
+                            }
+                        }
+                    }
+
+                    var incomeByToday = await DbContext.Incomes
+                        .Where(i => i.UserId == currentUser.Id &&
+                            ((i.Recurring && i.StartDate <= monthDto.StartDate && i.EndDate >= monthDto.EndDate) ||
+                            (!i.Recurring && i.StartDate <= today.Date && i.StartDate >= monthDto.StartDate)))
+                        .SumAsync(i => (decimal?)i.Amount) ?? 0;
+
+                    bankBalanceForToday = incomeByToday - expendituresPaidByToday.Sum(e => e.Amount);
+                }
+
+                monthDtos.Add(monthDto);
+            }
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void StartEditNotes()
+    {
+        isEditingNotes = true;
+        editingNotes = currentMonthDto?.Notes ?? string.Empty;
+    }
+
+    private void CancelEditNotes()
+    {
+        isEditingNotes = false;
+        editingNotes = string.Empty;
+    }
+
+    private void SaveNotes()
+    {
+        if (currentMonthDto != null)
+        {
+            DbService.UpdateMonthNotes(currentMonthDto.Id, editingNotes);
+            currentMonthDto.Notes = editingNotes;
+        }
+
+        isEditingNotes = false;
+        editingNotes = string.Empty;
+    }
+
+    private List<CategorySummary> GetCategoryPercentages(MonthDto month)
+    {
+        var expendituresForMonth = CashflowService.GetCashflowForMonth(month, expenditures!.Cast<CashflowDto>().ToList())
+            .Cast<ExpenditureDto>().ToList();
+        var totalIncome = month.ProjectedTotalIncome;
+
+        var categoryGroups = expendituresForMonth
+            .GroupBy(e => string.IsNullOrEmpty(e.Category) ? "Uncategorized" : e.Category)
+            .Select(g => new CategorySummary
+            {
+                Category = g.Key,
+                Amount = g.Sum(e => e.Amount),
+                Percentage = totalIncome > 0 ? Math.Round((g.Sum(e => e.Amount) / totalIncome) * 100, 1) : 0,
+                Expenditures = g.OrderBy(e => e.PaymentDate.Day).ToList()
+            })
+            .OrderByDescending(c => c.Amount)
+            .ToList();
+
+        decimal totalExpenditure = categoryGroups.Sum(g => g.Amount);
+
+        // Add Leftover row
+        var leftoverAmount = totalIncome - totalExpenditure;
+        var leftoverPercent = totalIncome > 0 ? Math.Round((leftoverAmount / totalIncome) * 100, 1) : 0;
+        categoryGroups.Add(new CategorySummary
+        {
+            Category = "Leftover",
+            Amount = leftoverAmount,
+            Percentage = leftoverPercent,
+            Expenditures = new List<ExpenditureDto>()
+        });
+
+        // Add Total row
+        categoryGroups.Add(new CategorySummary
+        {
+            Category = "Total",
+            Amount = totalIncome,
+            Percentage = 100,
+            Expenditures = new List<ExpenditureDto>()
+        });
+
+        return categoryGroups;
+    }
+
+    private class CategorySummary
+    {
+        public string Category { get; set; } = string.Empty;
+        public decimal Amount { get; set; }
+        public decimal Percentage { get; set; }
+        public List<ExpenditureDto> Expenditures { get; set; } = new();
+    }
+}

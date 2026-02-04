@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "financialplanner.fullname" . }}
+  labels:
+    {{- include "financialplanner.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ include "financialplanner.name" . }}
+  template:
+    metadata:
+      labels:
+        app: {{ include "financialplanner.name" . }}
+    spec:
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - name: finance-db-volume
+              mountPath: /app/data/finance.db
+              subPath: finance.db
+      volumes:
+        - name: finance-db-volume
+          persistentVolumeClaim:
+            claimName: finance-db-pvc

@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: finance-db-config
+binaryData:
+  # Add your base64-encoded finance.db here, or use another method to provision the file
+  # finance.db: <base64-encoded-content>

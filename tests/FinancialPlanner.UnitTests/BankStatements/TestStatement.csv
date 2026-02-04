@@ -1,0 +1,208 @@
+Date,Transaction type,Description,Paid out,Paid in,Balance
+27-Sep-25,Contactless Payment,CONVENIENCE STORE CITY1 GB GOOGLE 1234,£3.45,,£512.78
+27-Sep-25,Contactless Payment,LOCAL SHOP CITY1 GB GOOGLE 1234,£7.23,,£505.55
+27-Sep-25,Visa purchase,MGP*Marketplace London GB,£12.67,,£492.88
+27-Sep-25,Visa purchase,MGP*Marketplace London GB,£18.94,,£473.94
+27-Sep-25,Contactless Payment,SUPERMARKET 2931 CITY1 GB GOOGLE 1234,£85.32,,-£42.17
+29-Sep-25,Visa purchase,Cloud Service London GB,£2.49,,-£44.66
+29-Sep-25,Contactless Payment,RETAIL STORE CITY1 GB GOOGLE 1234,£19.50,,-£64.16
+30-Sep-25,Bank credit,EMPLOYER COMPANY,,"£2,845.00","£2,780.84"
+30-Sep-25,Interest added,Credit 30 September 2025,,£0.73,"£2,781.57"
+01-Oct-25,Direct debit,DVLA-XX00XXX,£21.34,,"£2,760.23"
+01-Oct-25,Direct debit,COUNCIL TAX,£156.78,,"£2,603.45"
+01-Oct-25,Bank credit,PERSON A,,£375.00,"£2,978.45"
+01-Oct-25,Transfer to,000000 00000000 Withdrawal 01 October 2025,£545.00,,"£2,433.45"
+01-Oct-25,Visa purchase,Streaming Service London GB,£9.49,,"£2,423.96"
+02-Oct-25,Contactless Payment,SUPERMARKET 2931 CITY1 GB GOOGLE 1234,£52.18,,"£2,371.78"
+04-Oct-25,Contactless Payment,FUEL STATION CITY1 GB GOOGLE 1234,£1.50,,"£2,370.28"
+04-Oct-25,Contactless Payment,FUEL STATION CITY1 GB GOOGLE 1234,£1.50,,"£2,368.78"
+06-Oct-25,To mortgage a/c,ACCOUNT HOLDER,"£987.65",,"£1,381.13"
+06-Oct-25,ATM Withdrawal NOTEMACHINE LTD,Withdrawal 05 October 2025,£60.00,,"£1,321.13"
+06-Oct-25,Contactless Payment,BARBER SHOP CITY1 GB GOOGLE 1234,£22.00,,"£1,299.13"
+06-Oct-25,Direct debit,STUDENT LOAN,£7.50,,"£1,291.63"
+06-Oct-25,Standing order,CHARITY ORG,£325.00,,£966.63
+06-Oct-25,Visa purchase,AI SERVICE SUBSCRIPTION US 8157,£24.00,,£942.63
+07-Oct-25,Direct debit,INSURANCE COMPANY,£42.56,,£900.07
+08-Oct-25,Transfer from,000000 00000000 Credit 07 October 2025,,£125.00,"£1,025.07"
+08-Oct-25,Bank credit,TV LICENCE,,£0.02,"£1,025.09"
+09-Oct-25,Visa purchase,LOCAL SERVICE CITY2 GB GOOGLE 1234,£6.75,,"£1,018.34"
+10-Oct-25,Direct debit,SUBSCRIPTION SERVICE,£11.99,,"£1,006.35"
+10-Oct-25,Visa purchase,APP SUBSCRIPTION IE,£0.99,,"£1,005.36"
+10-Oct-25,Contactless Payment,SUPERMARKET 2931 CITY1 GB GOOGLE 1234,£55.43,,£949.93
+11-Oct-25,Visa purchase,ONLINE RETAILER LONDON GB 8774,£12.85,,£937.08
+13-Oct-25,Transfer from,000000 00000000 Credit 11 October 2025,,£275.00,"£1,212.08"
+13-Oct-25,Direct debit,BROADBAND PROVIDER,£38.50,,"£1,173.58"
+13-Oct-25,Direct debit,MOBILE PROVIDER,£42.15,,"£1,131.43"
+13-Oct-25,Direct debit,CREDIT CARD,£92.34,,"£1,039.09"
+14-Oct-25,Visa purchase,HOME EQUIPMENT GB,£285.50,,£753.59
+15-Oct-25,Direct debit,ENERGY PROVIDER,£118.45,,£635.14
+16-Oct-25,Contactless Payment,SERVICE STATION CITY3 GB GOOGLE 1234,£16.78,,£618.36
+16-Oct-25,Contactless Payment,FUEL STATION CITY3 GB GOOGLE 1234,£25.89,,£592.47
+16-Oct-25,Contactless Payment,SUPERMARKET 2931 CITY1 GB GOOGLE 1234,£41.23,,£551.24
+17-Oct-25,Direct Debit - First Payment,SUBSCRIPTION SERVICE,£54.75,,£496.49
+17-Oct-25,Direct debit,WATER COMPANY,£78.00,,£418.49
+17-Oct-25,Visa purchase,FOOD MARKET LONDON GB 2748,£14.67,,£403.82
+17-Oct-25,Visa purchase,ONLINE RETAILER LONDON GB 8774,£15.23,,£388.59
+17-Oct-25,Contactless Payment,HOME STORE 1300 CITY1 GB GOOGLE 1234,£32.45,,£356.14
+18-Oct-25,Visa purchase,SOFTWARE SUBSCRIPTION GB,£10.99,,£345.15
+20-Oct-25,Contactless Payment,HOME STORE 1300 CITY1 GB GOOGLE 1234,£13.50,,£331.65
+20-Oct-25,Direct debit,CAR FINANCE,£198.45,,£133.20
+20-Oct-25,Contactless Payment,SUPERMARKET 2931 CITY1 GB GOOGLE 1234,£39.87,,£93.33
+21-Oct-25,Direct debit,CAR INSURANCE,£37.89,,£55.44
+21-Oct-25,Visa purchase,ONLINE RETAILER GB 8774,£12.34,,£43.10
+22-Oct-25,Direct debit,CREDIT CARD,£145.67,,-£102.57
+22-Oct-25,Visa purchase,SUBSCRIPTION SERVICE GB 8774,£10.99,,-£113.56
+23-Oct-25,ATM Withdrawal NOTEMACHINE LTD,Withdrawal 23 October 2025,£40.00,,-£153.56
+27-Oct-25,Contactless Payment,LEISURE CLUB COUNTY1 GB GOOGLE 1234,£4.50,,-£158.06
+27-Oct-25,Contactless Payment,EVENT VENDOR CITY4 GB GOOGLE 1234,£12.75,,-£170.81
+27-Oct-25,Contactless Payment,FUEL STATION 3952 CITY1 GB GOOGLE 1234,£68.23,,-£239.04
+27-Oct-25,Contactless Payment,SUPERMARKET 2931 CITY1 GB GOOGLE 1234,£55.67,,-£294.71
+29-Oct-25,Bank credit,REFUND 173968,,£12.45,-£282.26
+29-Oct-25,Visa purchase,Cloud Service London GB,£2.49,,-£284.75
+31-Oct-25,Bank credit,EMPLOYER COMPANY,,"£3,125.00","£2,840.25"
+31-Oct-25,Bank credit,REFUND 173968,,£54.75,"£2,895.00"
+31-Oct-25,Visa purchase,Streaming Service London GB,£9.49,,"£2,885.51"
+31-Oct-25,Interest added,Credit 31 October 2025,,£0.82,"£2,886.33"
+01-Nov-25,Transfer to,000000 00000000 Withdrawal 31 October 2025,£612.50,,"£2,273.83"
+01-Nov-25,Bank credit,PERSON A,,£375.00,"£2,648.83"
+01-Nov-25,Transfer to,000000 00000000 Withdrawal 01 November 2025,£425.00,,"£2,223.83"
+03-Nov-25,Payment to,PERSON B,£175.00,,"£2,048.83"
+03-Nov-25,Visa purchase,TOURIST ATTRACTION GB,£15.50,,"£2,033.33"
+03-Nov-25,Contactless Payment,LOCAL SHOP CITY1 GB GOOGLE 1234,£21.78,,"£2,011.55"
+03-Nov-25,Direct debit,DVLA-XX00XXX,£21.34,,"£1,990.21"
+03-Nov-25,Direct debit,COUNCIL TAX,£156.78,,"£1,833.43"
+03-Nov-25,Contactless Payment,HOME STORE 1300 CITY1 GB GOOGLE 1234,£13.50,,"£1,819.93"
+03-Nov-25,Contactless Payment,KEY SERVICE 5205 CITY1 GB GOOGLE 1234,£34.25,,"£1,785.68"
+03-Nov-25,Contactless Payment,SUPERMARKET 2931 CITY1 GB GOOGLE 1234,£56.89,,"£1,728.79"
+03-Nov-25,Payment to,PERSON C,£8.25,,"£1,720.54"
+04-Nov-25,Visa purchase,MGP*Marketplace London GB,£36.45,,"£1,684.09"
+05-Nov-25,To mortgage a/c,ACCOUNT HOLDER,£987.65,,£696.44
+05-Nov-25,Direct debit,STUDENT LOAN,£7.50,,£688.94
+05-Nov-25,Standing order,CHARITY ORG,£175.00,,£513.94
+06-Nov-25,Direct Debit - First Payment,MAGAZINE SUBSCRIPTION,£18.75,,£495.19
+06-Nov-25,Visa purchase,MGP*Marketplace London GB,£7.89,,£487.30
+06-Nov-25,Visa purchase,AI SERVICE SUBSCRIPTION US 8157,£24.00,,£463.30
+07-Nov-25,Direct debit,INSURANCE COMPANY,£42.56,,£420.74
+07-Nov-25,Visa purchase,MGP*Marketplace London GB,£8.45,,£412.29
+08-Nov-25,Contactless Payment,SERVICE STATION COUNTY2 GB GOOGLE 1234,£18.23,,£394.06
+10-Nov-25,Contactless Payment,HERITAGE SITE CITY5 GB GOOGLE 1234,£5.75,,£388.31
+10-Nov-25,Contactless Payment,SUPERMARKET CITY5 GB GOOGLE 1234,£11.89,,£376.42
+10-Nov-25,Contactless Payment,BARBER CITY5 GB GOOGLE 1234,£19.50,,£356.92
+10-Nov-25,Visa purchase,PARKING SERVICE GB GOOGLE 1234,£6.75,,£350.17
+10-Nov-25,Visa purchase,APP SUBSCRIPTION IE,£0.99,,£349.18
+10-Nov-25,Contactless Payment,FAST FOOD CITY1 GB GOOGLE 1234,£8.45,,£340.73
+10-Nov-25,Contactless Payment,SUPERMARKET 2931 CITY1 GB GOOGLE 1234,£42.67,,£298.06
+11-Nov-25,Visa purchase,FOOD DELIVERY GB 2078,£27.34,,£270.72
+12-Nov-25,Direct debit,BROADBAND PROVIDER,£38.50,,£232.22
+12-Nov-25,Direct debit,MOBILE PROVIDER,£42.15,,£190.07
+13-Nov-25,Direct debit,CREDIT CARD,£92.34,,£97.73
+13-Nov-25,Visa purchase,FOOD MARKET LONDON GB 2748,£13.75,,£83.98
+15-Nov-25,Contactless Payment,FAST FOOD CITY1 GB GOOGLE 1234,£15.67,,£68.31
+17-Nov-25,Visa purchase,MGP*Marketplace London GB,£10.89,,£57.42
+17-Nov-25,Contactless Payment,LOCAL SHOP CITY1 GB GOOGLE 1234,£15.23,,£42.19
+17-Nov-25,Visa purchase,MGP*Marketplace London GB,£34.56,,£7.63
+17-Nov-25,Direct debit,WATER COMPANY,£78.00,,-£70.37
+17-Nov-25,Direct debit,ENERGY PROVIDER,£135.50,,-£205.87
+17-Nov-25,Contactless Payment,SUPERMARKET 2931 CITY1 GB GOOGLE 1234,£48.75,,-£254.62
+17-Nov-25,Contactless Payment,HOME STORE F0460 CITY1 GB GOOGLE 1234,£75.45,,-£330.07
+17-Nov-25,Contactless Payment,HARDWARE STORE CITY1 1098 GB GOOGLE 1234,£82.34,,-£412.41
+17-Nov-25,Contactless Payment,HOME STORE M0460 CITY1 GB GOOGLE 1234,£135.00,,-£547.41
+18-Nov-25,Contactless Payment,HOME STORE F0460 CITY1 GB GOOGLE 1234,£3.89,,-£551.30
+18-Nov-25,Visa purchase,SOFTWARE SUBSCRIPTION GB,£10.99,,-£562.29
+19-Nov-25,Visa Credit,HOME STORE M0460 CITY1 GB 1234,,£135.00,-£427.29
+19-Nov-25,Contactless Payment,HOME STORE F0460 CITY1 GB GOOGLE 1234,£105.75,,-£533.04
+20-Nov-25,Direct debit,CAR FINANCE,£198.45,,-£731.49
+20-Nov-25,Contactless Payment,CAFE CITY1 GB GOOGLE 1234,£3.25,,-£734.74
+20-Nov-25,Contactless Payment,CONVENIENCE STORE CITY1 GB GOOGLE 1234,£5.50,,-£740.24
+20-Nov-25,Contactless Payment,RESTAURANT CITY1 GB GOOGLE 1234,£16.75,,-£756.99
+21-Nov-25,Direct debit,CAR INSURANCE,£37.89,,-£794.88
+21-Nov-25,Contactless Payment,FUEL STATION 3952 CITY1 GB GOOGLE 1234,£82.45,,-£877.33
+22-Nov-25,Contactless Payment,LOCAL SHOP CITY1 GB GOOGLE 1234,£8.25,,-£885.58
+22-Nov-25,Visa purchase,SUBSCRIPTION SERVICE GB 8774,£10.99,,-£896.57
+24-Nov-25,Direct debit,CREDIT CARD,£145.67,,-£1042.24
+24-Nov-25,Contactless Payment,SUPERMARKET 2931 CITY1 GB GOOGLE 1234,£44.56,,-£1086.80
+26-Nov-25,Contactless Payment,SERVICE STATION CITY6 GB GOOGLE 1234,£21.34,,-£1108.14
+26-Nov-25,Arranged Overdraft Interest,Withdrawal 26 November 2025,£0.08,,-£1108.22
+27-Nov-25,Contactless Payment,LOCAL VENDOR 311422 CITY1 GB GOOGLE 1234,£5.67,,-£1113.89
+28-Nov-25,Bank credit,EMPLOYER COMPANY,,"£2,845.00","£1,731.11"
+28-Nov-25,Contactless Payment,LOCAL SHOP CITY1 GB GOOGLE 1234,£8.45,,"£1,722.66"
+28-Nov-25,Visa purchase,RESTAURANT LONDON GB GOOGLE 1234,£19.75,,"£1,702.91"
+29-Nov-25,Visa purchase,Cloud Service London GB,£2.49,,"£1,700.42"
+29-Nov-25,Contactless Payment,VARIETY STORE CITY1 GB GOOGLE 1234,£2.15,,"£1,698.27"
+29-Nov-25,Contactless Payment,DISCOUNT STORE CITY1 GB GOOGLE 1234,£14.56,,"£1,683.71"
+29-Nov-25,Contactless Payment,SUPERMARKET CITY1 GB GOOGLE 1234,£17.89,,"£1,665.82"
+01-Dec-25,Visa purchase,MGP*Marketplace London GB,£9.45,,"£1,656.37"
+01-Dec-25,Visa purchase,Streaming Service London GB,£13.49,,"£1,642.88"
+01-Dec-25,Visa purchase,MGP*Marketplace London GB,£16.78,,"£1,626.10"
+01-Dec-25,Contactless Payment,COFFEE SHOP CITY7 GB GOOGLE 1234,£17.50,,"£1,608.60"
+30-Nov-25,Interest added,Credit 30 November 2025,,£0.78,"£1,609.38"
+01-Dec-25,Direct debit,DVLA-XX00XXX,£21.34,,"£1,588.04"
+01-Dec-25,Direct debit,COUNCIL TAX,£156.78,,"£1,431.26"
+01-Dec-25,Visa purchase,Streaming Service London GB,£9.49,,"£1,421.77"
+01-Dec-25,Visa purchase,MGP*Marketplace London GB,£9.87,,"£1,411.90"
+01-Dec-25,Contactless Payment,DISCOUNT STORE CITY1 GB GOOGLE 1234,£10.75,,"£1,401.15"
+01-Dec-25,Contactless Payment,SUPERMARKET 2931 CITY1 GB GOOGLE 1234,£31.45,,"£1,369.70"
+01-Dec-25,Bank credit,PERSON A,,£350.00,"£1,719.70"
+02-Dec-25,Transfer to,000000 00000000 Withdrawal 01 December 2025,£385.00,,"£1,334.70"
+02-Dec-25,Visa purchase,ONLINE RETAILER LONDON GB 8774,£21.34,,"£1,313.36"
+03-Dec-25,Visa purchase,MGP*Marketplace London GB,£42.56,,"£1,270.80"
+04-Dec-25,Contactless Payment,SUPERMARKET 2931 CITY1 GB GOOGLE 1234,£43.78,,"£1,227.02"
+05-Dec-25,To mortgage a/c,ACCOUNT HOLDER,£987.65,,£239.37
+05-Dec-25,Direct debit,STUDENT LOAN,£7.50,,£231.87
+05-Dec-25,Standing order,CHARITY ORG,£175.00,,£56.87
+05-Dec-25,Payment to,PERSON D via Payment Service,£55.00,,£1.87
+05-Dec-25,Contactless Payment,SUPERMARKET 2931 CITY1 GB GOOGLE 1234,£8.45,,-£6.58
+05-Dec-25,Contactless Payment,FOOD VENDOR CITY3 GB GOOGLE 1234,£18.50,,-£25.08
+06-Dec-25,Contactless Payment,KEY SERVICE 5205 CITY1 GB GOOGLE 1234,£55.00,,-£80.08
+06-Dec-25,Visa purchase,AI SERVICE SUBSCRIPTION US 8157,£24.00,,-£104.08
+08-Dec-25,Direct debit,INSURANCE COMPANY,£42.56,,-£146.64
+08-Dec-25,Contactless Payment,LOCAL SHOP CITY1 GB GOOGLE 1234,£3.15,,-£149.79
+08-Dec-25,Contactless Payment,SUPERMARKET 2931 CITY1 GB GOOGLE 1234,£34.67,,-£184.46
+09-Dec-25,Visa Credit,MGP*Marketplace London GB,,£9.45,-£175.01
+10-Dec-25,Payment to,PERSON E,£12.50,,-£187.51
+10-Dec-25,Visa purchase,APP SUBSCRIPTION IE 0292,£0.99,,-£188.50
+10-Dec-25,Contactless Payment,LOCAL SHOP CITY1 GB GOOGLE 1234,£9.45,,-£197.95
+11-Dec-25,Direct debit,MOBILE PROVIDER,£42.15,,-£240.10
+11-Dec-25,Visa purchase,ONLINE RETAILER GB 8774,£36.78,,-£276.88
+11-Dec-25,Visa purchase,ONLINE RETAILER GB 8774,£41.23,,-£318.11
+12-Dec-25,Direct debit,BROADBAND PROVIDER,£38.50,,-£356.61
+12-Dec-25,Direct debit,CREDIT CARD,£92.34,,-£448.95
+12-Dec-25,Contactless Payment,DISCOUNT STORE CITY1 GB GOOGLE 1234,£32.45,,-£481.40
+13-Dec-25,Contactless Payment,PARKING CITY3 GB GOOGLE 1234,£9.50,,-£490.90
+15-Dec-25,Contactless Payment,FROZEN FOOD STORE CITY1 GB GOOGLE 1234,£22.75,,-£513.65
+15-Dec-25,Visa purchase,ONLINE RETAILER GB 8774,£26.45,,-£540.10
+15-Dec-25,Contactless Payment,DISCOUNT STORE CITY1 GB GOOGLE 1234,£33.67,,-£573.77
+15-Dec-25,Direct debit,ENERGY PROVIDER,£135.50,,-£709.27
+16-Dec-25,Visa purchase,PAYMENT SERVICE GB,£24.00,,-£733.27
+16-Dec-25,Contactless Payment,SUPERMARKET 2931 CITY1 GB GOOGLE 1234,£67.89,,-£801.16
+17-Dec-25,Direct debit,WATER COMPANY,£78.00,,-£879.16
+17-Dec-25,Visa purchase,RESTAURANT LONDON GB,£8.75,,-£887.91
+17-Dec-25,Visa purchase,RESTAURANT LONDON GB,£22.45,,-£910.36
+18-Dec-25,Visa purchase,SOFTWARE SUBSCRIPTION GB 1529,£10.99,,-£921.35
+19-Dec-25,Visa purchase,MGP*Marketplace London GB,£16.78,,-£938.13
+20-Dec-25,Visa purchase,ONLINE RETAILER GB 8774,£14.56,,-£952.69
+20-Dec-25,Contactless Payment,SERVICE STATION CITY3 GB GOOGLE 1234,£18.23,,-£970.92
+20-Dec-25,Visa purchase,ONLINE RETAILER LONDON GB 8774,£29.45,,-£1000.37
+20-Dec-25,Contactless Payment,SUPERMARKET 2931 CITY1 GB GOOGLE 1234,£41.23,,-£1041.60
+20-Dec-25,Visa purchase,ONLINE RETAILER GB 8774,£43.67,,-£1085.27
+22-Dec-25,Transfer from,000000 00000000 Credit 20 December 2025,,£450.00,-£635.27
+22-Dec-25,Contactless Payment,SHOPPING CENTRE CITY1 GB GOOGLE 1234,£3.89,,-£639.16
+22-Dec-25,Contactless Payment,CHARITY SHOP CITY1 GB GOOGLE 1234,£5.50,,-£644.66
+22-Dec-25,Contactless Payment,LOCAL VENDOR CITY1 GB GOOGLE 1234,£7.25,,-£651.91
+22-Dec-25,Contactless Payment,DISCOUNT STORE CITY1 GB GOOGLE 1234,£8.45,,-£660.36
+22-Dec-25,Visa purchase,ONLINE RETAILER GB 8774,£15.67,,-£676.03
+22-Dec-25,Contactless Payment,BARBER SHOP CITY1 GB GOOGLE 1234,£21.50,,-£697.53
+22-Dec-25,Contactless Payment,SPORTS STORE CITY1 GB GOOGLE 1234,£24.00,,-£721.53
+22-Dec-25,Contactless Payment,LOCAL SHOP CITY1 GB GOOGLE 1234,£25.75,,-£747.28
+22-Dec-25,Visa purchase,MGP*Marketplace London GB,£33.45,,-£780.73
+22-Dec-25,Contactless Payment,BOOKSTORE CITY1 GB GOOGLE 1234,£41.23,,-£821.96
+22-Dec-25,Contactless Payment,SPORTS STORE CITY1 GB GOOGLE 1234,£45.00,,-£866.96
+22-Dec-25,Bank credit,PERSON F,,£175.00,-£691.96
+22-Dec-25,Direct debit,CAR INSURANCE,£37.89,,-£729.85
+22-Dec-25,Direct debit,CREDIT CARD,£145.67,,-£875.52
+22-Dec-25,Direct debit,CAR FINANCE,£198.45,,-£1073.97
+22-Dec-25,Visa purchase,ONLINE RETAILER LONDON GB 8774,£275.50,,-£1349.47
+22-Dec-25,Visa purchase,SUBSCRIPTION SERVICE GB 8774,£10.99,,-£1360.46
+23-Dec-25,Bank credit,EMPLOYER COMPANY,,"£2,845.00","£1,484.54"
+24-Dec-25,Contactless Payment,SUPERMARKET 2931 CITY1 GB GOOGLE 1234,£48.75,,"£1,435.79"
+24-Dec-25,Contactless Payment,FUEL STATION 3952 CITY1 GB GOOGLE 1234,£68.23,,"£1,367.56"

@@ -1,0 +1,421 @@
+﻿@page "/categories"
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+@using FinancialPlanner.Blazor.DataAccess
+@using FinancialPlanner.Blazor.DataAccess.Models
+@using FinancialPlanner.Blazor.Services
+@using Microsoft.EntityFrameworkCore
+
+@inject FinanceDbContext DbContext
+@inject ICurrentUserService CurrentUserService
+
+<PageTitle>Categories</PageTitle>
+
+<h3>Manage Categories</h3>
+
+@if (isLoading)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <div class="row">
+        <!-- Income Categories Section -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">Income Categories</h5>
+                </div>
+                <div class="card-body">
+                    <div class="input-group mb-3">
+                        <input type="text" class="form-control" placeholder="New income category..."
+                               @bind="newIncomeCategoryName" @bind:event="oninput" />
+                        <button class="btn btn-success" @onclick="AddIncomeCategory"
+                                disabled="@string.IsNullOrWhiteSpace(newIncomeCategoryName)">
+                            Add
+                        </button>
+                    </div>
+
+                    @if (!incomeCategories.Any())
+                    {
+                        <p class="text-muted">No income categories yet.</p>
+                    }
+                    else
+                    {
+                        <ul class="list-group">
+                            @foreach (var category in incomeCategories.OrderBy(c => c.SortOrder))
+                            {
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    @if (editingIncomeCategoryId == category.Id)
+                                    {
+                                        <input type="text" class="form-control form-control-sm me-2"
+                                               @bind="editingCategoryName" />
+                                        <div class="btn-group btn-group-sm">
+                                            <button class="btn btn-success" @onclick="() => SaveIncomeCategory(category.Id)">Save</button>
+                                            <button class="btn btn-secondary" @onclick="CancelEdit">Cancel</button>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <span class="@(category.IsArchived ? "text-muted text-decoration-line-through" : "")">
+                                            @category.Name
+                                        </span>
+                                        <div class="btn-group btn-group-sm">
+                                            <button class="btn btn-outline-primary" @onclick="() => StartEditIncomeCategory(category)">Edit</button>
+                                            @if (category.IsArchived)
+                                            {
+                                                <button class="btn btn-outline-success" @onclick="() => RestoreIncomeCategory(category.Id)">Restore</button>
+                                            }
+                                            else
+                                            {
+                                                <button class="btn btn-outline-warning" @onclick="() => ArchiveIncomeCategory(category.Id)">Archive</button>
+                                            }
+                                            <button class="btn btn-outline-danger" @onclick="() => DeleteIncomeCategory(category.Id)">Delete</button>
+                                        </div>
+                                    }
+                                </li>
+                            }
+                        </ul>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Expense Categories Section -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">Expense Categories</h5>
+                </div>
+                <div class="card-body">
+                    <div class="input-group mb-3">
+                        <input type="text" class="form-control" placeholder="New expense category..."
+                               @bind="newExpenseCategoryName" @bind:event="oninput" />
+                        <button class="btn btn-danger" @onclick="AddExpenseCategory"
+                                disabled="@string.IsNullOrWhiteSpace(newExpenseCategoryName)">
+                            Add
+                        </button>
+                    </div>
+
+                    @if (!expenseCategories.Any())
+                    {
+                        <p class="text-muted">No expense categories yet.</p>
+                    }
+                    else
+                    {
+                        <ul class="list-group">
+                            @foreach (var category in expenseCategories.OrderBy(c => c.SortOrder))
+                            {
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    @if (editingExpenseCategoryId == category.Id)
+                                    {
+                                        <input type="text" class="form-control form-control-sm me-2"
+                                               @bind="editingCategoryName" />
+                                        <div class="btn-group btn-group-sm">
+                                            <button class="btn btn-success" @onclick="() => SaveExpenseCategory(category.Id)">Save</button>
+                                            <button class="btn btn-secondary" @onclick="CancelEdit">Cancel</button>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <span class="@(category.IsArchived ? "text-muted text-decoration-line-through" : "")">
+                                            @category.Name
+                                        </span>
+                                        <div class="btn-group btn-group-sm">
+                                            <button class="btn btn-outline-primary" @onclick="() => StartEditExpenseCategory(category)">Edit</button>
+                                            @if (category.IsArchived)
+                                            {
+                                                <button class="btn btn-outline-success" @onclick="() => RestoreExpenseCategory(category.Id)">Restore</button>
+                                            }
+                                            else
+                                            {
+                                                <button class="btn btn-outline-warning" @onclick="() => ArchiveExpenseCategory(category.Id)">Archive</button>
+                                            }
+                                            <button class="btn btn-outline-danger" @onclick="() => DeleteExpenseCategory(category.Id)">Delete</button>
+                                        </div>
+                                    }
+                                </li>
+                            }
+                        </ul>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger mt-3">@errorMessage</div>
+    }
+
+    @if (!string.IsNullOrEmpty(successMessage))
+    {
+        <div class="alert alert-success mt-3">@successMessage</div>
+    }
+}
+
+@code {
+    private bool isLoading = true;
+    private int? currentUserId;
+
+    private List<IncomeCategory> incomeCategories = [];
+    private List<ExpenseCategory> expenseCategories = [];
+
+    private string newIncomeCategoryName = string.Empty;
+    private string newExpenseCategoryName = string.Empty;
+
+    private int? editingIncomeCategoryId;
+    private int? editingExpenseCategoryId;
+    private string editingCategoryName = string.Empty;
+
+    private string errorMessage = string.Empty;
+    private string successMessage = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var user = await CurrentUserService.GetCurrentUserAsync();
+            if (user == null) return;
+
+            currentUserId = user.Id;
+            await LoadCategories();
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task LoadCategories()
+    {
+        if (!currentUserId.HasValue) return;
+
+        incomeCategories = await DbContext.IncomeCategories
+            .Where(c => c.UserId == currentUserId.Value)
+            .OrderBy(c => c.SortOrder)
+            .ToListAsync();
+
+        expenseCategories = await DbContext.ExpenseCategories
+            .Where(c => c.UserId == currentUserId.Value)
+            .OrderBy(c => c.SortOrder)
+            .ToListAsync();
+    }
+
+    // Income Category Methods
+    private async Task AddIncomeCategory()
+    {
+        if (!currentUserId.HasValue || string.IsNullOrWhiteSpace(newIncomeCategoryName))
+            return;
+
+        ClearMessages();
+
+        var maxSortOrder = incomeCategories.Any() ? incomeCategories.Max(c => c.SortOrder) : 0;
+
+        var category = new IncomeCategory
+        {
+            UserId = currentUserId.Value,
+            Name = newIncomeCategoryName.Trim(),
+            SortOrder = maxSortOrder + 1,
+            IsArchived = false
+        };
+
+        DbContext.IncomeCategories.Add(category);
+        await DbContext.SaveChangesAsync();
+
+        newIncomeCategoryName = string.Empty;
+        successMessage = $"Income category '{category.Name}' added.";
+        await LoadCategories();
+    }
+
+    private void StartEditIncomeCategory(IncomeCategory category)
+    {
+        ClearMessages();
+        editingIncomeCategoryId = category.Id;
+        editingExpenseCategoryId = null;
+        editingCategoryName = category.Name;
+    }
+
+    private async Task SaveIncomeCategory(int id)
+    {
+        if (string.IsNullOrWhiteSpace(editingCategoryName))
+        {
+            errorMessage = "Category name cannot be empty.";
+            return;
+        }
+
+        var category = await DbContext.IncomeCategories.FindAsync(id);
+        if (category != null)
+        {
+            category.Name = editingCategoryName.Trim();
+            await DbContext.SaveChangesAsync();
+            successMessage = "Income category updated.";
+        }
+
+        CancelEdit();
+        await LoadCategories();
+    }
+
+    private async Task ArchiveIncomeCategory(int id)
+    {
+        ClearMessages();
+        var category = await DbContext.IncomeCategories.FindAsync(id);
+        if (category != null)
+        {
+            category.IsArchived = true;
+            await DbContext.SaveChangesAsync();
+            successMessage = $"Income category '{category.Name}' archived.";
+            await LoadCategories();
+        }
+    }
+
+    private async Task RestoreIncomeCategory(int id)
+    {
+        ClearMessages();
+        var category = await DbContext.IncomeCategories.FindAsync(id);
+        if (category != null)
+        {
+            category.IsArchived = false;
+            await DbContext.SaveChangesAsync();
+            successMessage = $"Income category '{category.Name}' restored.";
+            await LoadCategories();
+        }
+    }
+
+    private async Task DeleteIncomeCategory(int id)
+    {
+        ClearMessages();
+        var category = await DbContext.IncomeCategories
+            .Include(c => c.Incomes)
+            .FirstOrDefaultAsync(c => c.Id == id);
+
+        if (category == null) return;
+
+        if (category.Incomes.Any())
+        {
+            errorMessage = $"Cannot delete '{category.Name}' - it has {category.Incomes.Count} income entries. Archive it instead.";
+            return;
+        }
+
+        DbContext.IncomeCategories.Remove(category);
+        await DbContext.SaveChangesAsync();
+        successMessage = $"Income category '{category.Name}' deleted.";
+        await LoadCategories();
+    }
+
+    // Expense Category Methods
+    private async Task AddExpenseCategory()
+    {
+        if (!currentUserId.HasValue || string.IsNullOrWhiteSpace(newExpenseCategoryName))
+            return;
+
+        ClearMessages();
+
+        var maxSortOrder = expenseCategories.Any() ? expenseCategories.Max(c => c.SortOrder) : 0;
+
+        var category = new ExpenseCategory
+        {
+            UserId = currentUserId.Value,
+            Name = newExpenseCategoryName.Trim(),
+            SortOrder = maxSortOrder + 1,
+            IsArchived = false
+        };
+
+        DbContext.ExpenseCategories.Add(category);
+        await DbContext.SaveChangesAsync();
+
+        newExpenseCategoryName = string.Empty;
+        successMessage = $"Expense category '{category.Name}' added.";
+        await LoadCategories();
+    }
+
+    private void StartEditExpenseCategory(ExpenseCategory category)
+    {
+        ClearMessages();
+        editingExpenseCategoryId = category.Id;
+        editingIncomeCategoryId = null;
+        editingCategoryName = category.Name;
+    }
+
+    private async Task SaveExpenseCategory(int id)
+    {
+        if (string.IsNullOrWhiteSpace(editingCategoryName))
+        {
+            errorMessage = "Category name cannot be empty.";
+            return;
+        }
+
+        var category = await DbContext.ExpenseCategories.FindAsync(id);
+        if (category != null)
+        {
+            category.Name = editingCategoryName.Trim();
+            await DbContext.SaveChangesAsync();
+            successMessage = "Expense category updated.";
+        }
+
+        CancelEdit();
+        await LoadCategories();
+    }
+
+    private async Task ArchiveExpenseCategory(int id)
+    {
+        ClearMessages();
+        var category = await DbContext.ExpenseCategories.FindAsync(id);
+        if (category != null)
+        {
+            category.IsArchived = true;
+            await DbContext.SaveChangesAsync();
+            successMessage = $"Expense category '{category.Name}' archived.";
+            await LoadCategories();
+        }
+    }
+
+    private async Task RestoreExpenseCategory(int id)
+    {
+        ClearMessages();
+        var category = await DbContext.ExpenseCategories.FindAsync(id);
+        if (category != null)
+        {
+            category.IsArchived = false;
+            await DbContext.SaveChangesAsync();
+            successMessage = $"Expense category '{category.Name}' restored.";
+            await LoadCategories();
+        }
+    }
+
+    private async Task DeleteExpenseCategory(int id)
+    {
+        ClearMessages();
+        var category = await DbContext.ExpenseCategories
+            .Include(c => c.Expenditures)
+            .FirstOrDefaultAsync(c => c.Id == id);
+
+        if (category == null) return;
+
+        if (category.Expenditures.Any())
+        {
+            errorMessage = $"Cannot delete '{category.Name}' - it has {category.Expenditures.Count} expenditure entries. Archive it instead.";
+            return;
+        }
+
+        DbContext.ExpenseCategories.Remove(category);
+        await DbContext.SaveChangesAsync();
+        successMessage = $"Expense category '{category.Name}' deleted.";
+        await LoadCategories();
+    }
+
+    // Helper Methods
+    private void CancelEdit()
+    {
+        editingIncomeCategoryId = null;
+        editingExpenseCategoryId = null;
+        editingCategoryName = string.Empty;
+    }
+
+    private void ClearMessages()
+    {
+        errorMessage = string.Empty;
+        successMessage = string.Empty;
+    }
+}

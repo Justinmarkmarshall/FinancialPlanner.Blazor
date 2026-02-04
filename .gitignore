@@ -1,0 +1,43 @@
+# Ignore Visual Studio .vs folder
+.vs/
+
+# Build results
+bin/
+obj/
+out/
+
+# User-specific files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Visual Studio settings
+.vs/
+.vscode/
+
+# ASP.NET/Blazor secrets
+secrets.json
+
+# Local configuration
+appsettings.Development.json
+appsettings.Local.json
+
+# Docker artifacts
+**/Dockerfile.*
+**/docker-compose.*
+
+# Logs
+*.log
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# NuGet packages
+*.nupkg
+*.snupkg
+packages/
+
+**/finance.db
+**/finance.db.bak
