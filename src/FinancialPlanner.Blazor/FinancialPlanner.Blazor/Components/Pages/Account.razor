@@ -1,0 +1,174 @@
+@page "/account"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@using System.Security.Claims
+@using FinancialPlanner.Blazor.DataAccess
+@using FinancialPlanner.Blazor.DataAccess.Models
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.EntityFrameworkCore
+@inject FinanceDbContext DbContext
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<PageTitle>Account - Financial Planner</PageTitle>
+
+<h3 class="mb-4">My Account</h3>
+
+@if (isLoading)
+{
+    <div class="d-flex justify-content-center">
+        <div class="spinner-border" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+}
+else if (user == null)
+{
+    <div class="alert alert-warning">
+        <p>Unable to load your account details. Please try logging in again.</p>
+    </div>
+}
+else
+{
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Profile Information</h5>
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-4">Display Name</dt>
+                        <dd class="col-sm-8">@user.DisplayName</dd>
+
+                        <dt class="col-sm-4">Email</dt>
+                        <dd class="col-sm-8">@user.Email</dd>
+
+                        <dt class="col-sm-4">Member Since</dt>
+                        <dd class="col-sm-8">@user.CreatedUtc.ToString("dd MMMM yyyy")</dd>
+                    </dl>
+                </div>
+            </div>
+
+            @if (user.Profile != null)
+            {
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-secondary text-white">
+                        <h5 class="mb-0">Preferences</h5>
+                    </div>
+                    <div class="card-body">
+                        <dl class="row mb-0">
+                            <dt class="col-sm-4">Currency</dt>
+                            <dd class="col-sm-8">@user.Profile.Currency</dd>
+
+                            <dt class="col-sm-4">Payday</dt>
+                            <dd class="col-sm-8">@GetOrdinal(user.Profile.PaydayDayOfMonth) of each month</dd>
+
+                            <dt class="col-sm-4">Savings Target</dt>
+                            <dd class="col-sm-8">@user.Profile.DefaultSavingsTarget.ToString("C")</dd>
+
+                            <dt class="col-sm-4">Locale</dt>
+                            <dd class="col-sm-8">@user.Profile.Locale</dd>
+                        </dl>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <div class="col-md-6">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">Account Summary</h5>
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-6">Total Months Tracked</dt>
+                        <dd class="col-sm-6">@monthCount</dd>
+
+                        <dt class="col-sm-6">Income Entries</dt>
+                        <dd class="col-sm-6">@incomeCount</dd>
+
+                        <dt class="col-sm-6">Expenditure Entries</dt>
+                        <dd class="col-sm-6">@expenditureCount</dd>
+
+                        <dt class="col-sm-6">Expense Categories</dt>
+                        <dd class="col-sm-6">@expenseCategoryCount</dd>
+
+                        <dt class="col-sm-6">Income Categories</dt>
+                        <dd class="col-sm-6">@incomeCategoryCount</dd>
+                    </dl>
+                </div>
+            </div>
+
+            <div class="card shadow-sm">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">Account Actions</h5>
+                </div>
+                <div class="card-body">
+                    <a href="/logout" class="btn btn-outline-danger">
+                        <span class="bi bi-box-arrow-right me-2"></span>Sign Out
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private User? user;
+    private bool isLoading = true;
+
+    private int monthCount;
+    private int incomeCount;
+    private int expenditureCount;
+    private int expenseCategoryCount;
+    private int incomeCategoryCount;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            var googleSubject = authState.User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (!string.IsNullOrEmpty(googleSubject))
+            {
+                user = await DbContext.Users
+                    .Include(u => u.Profile)
+                    .FirstOrDefaultAsync(u => u.GoogleSubject == googleSubject);
+
+                if (user != null)
+                {
+                    monthCount = await DbContext.Months.CountAsync(m => m.UserId == user.Id);
+                    incomeCount = await DbContext.Incomes.CountAsync(i => i.UserId == user.Id);
+                    expenditureCount = await DbContext.Expenditures.CountAsync(e => e.UserId == user.Id);
+                    expenseCategoryCount = await DbContext.ExpenseCategories.CountAsync(c => c.UserId == user.Id);
+                    incomeCategoryCount = await DbContext.IncomeCategories.CountAsync(c => c.UserId == user.Id);
+                }
+            }
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private static string GetOrdinal(int number)
+    {
+        if (number <= 0) return number.ToString();
+
+        var suffix = (number % 100) switch
+        {
+            11 or 12 or 13 => "th",
+            _ => (number % 10) switch
+            {
+                1 => "st",
+                2 => "nd",
+                3 => "rd",
+                _ => "th"
+            }
+        };
+
+        return $"{number}{suffix}";
+    }
+}

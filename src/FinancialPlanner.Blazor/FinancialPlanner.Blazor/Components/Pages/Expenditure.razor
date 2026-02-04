@@ -1,0 +1,340 @@
+﻿@page "/expenditure"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@using FinancialPlanner.Blazor.Components.Models
+@using FinancialPlanner.Blazor.Components.Models.Enums
+@using FinancialPlanner.Blazor.DataAccess
+@using FinancialPlanner.Blazor.DataAccess.Models
+@using FinancialPlanner.Blazor.Services
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.EntityFrameworkCore
+@using static FinancialPlanner.Blazor.Components.Models.Enums.Enums
+
+@inject FinanceDbContext Db
+@inject ICurrentUserService CurrentUserService
+
+<PageTitle>Expenditure</PageTitle>
+
+<h3>Add Expenditure</h3>
+
+<EditForm Model="@ExpenditureDto" OnValidSubmit="Submit" FormName="expenditure-new">
+    <div class="mb-3">  
+        <label>Name</label>
+        <InputText class="form-control" @bind-Value="ExpenditureDto.Name" />
+    </div>
+
+    <div class="mb-3">
+        <label>Amount</label>
+        <InputNumber class="form-control" @bind-Value="ExpenditureDto.Amount" />
+    </div>
+
+    <div class="form-check mb-3">
+        <label class="form-check-label">
+            <InputCheckbox class="form-check-input" @bind-Value="ExpenditureDto.Recurring" />
+            Recurring
+        </label>
+    </div>
+
+    <div class="mb-3">
+        <label>Payment Day</label>
+        <InputDate class="form-control" @bind-Value="ExpenditureDto.PaymentDate" />
+    </div>
+
+    @if (ExpenditureDto.Recurring)
+    {
+        <div class="mb-3">
+            <label>Start Date</label>
+            <InputDate class="form-control" @bind-Value="ExpenditureDto.StartDate" />
+        </div>
+        <div class="mb-3">
+            <label>End Date</label>
+            <InputDate class="form-control" @bind-Value="ExpenditureDto.EndDate" />
+        </div>
+    }
+
+    <div class="mb-3">
+        <label>Category</label>
+        <InputSelect class="form-control" @bind-Value="ExpenditureDto.ExpenseCategoryId">
+            <option value="">-- Select Category --</option>
+            @foreach (var category in expenseCategories.Where(c => !c.IsArchived))
+            {
+                <option value="@category.Id">@category.Name</option>
+            }
+        </InputSelect>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Submit</button>
+</EditForm>
+
+@if (!string.IsNullOrEmpty(_formError))
+{
+    <div class="alert alert-danger mb-3">@_formError</div>
+}
+
+<h4>Projected Expenditure Entries</h4>
+@if (expenditureList == null)
+{
+    <p>Loading...</p>
+}
+else if (!expenditureList.Any())
+{
+    <p>No expenditure entries found.</p>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Amount</th>
+                <th>Payment Date</th>
+                <th>Start Date</th>
+                <th>End Date</th>
+                <th>Recurring</th>
+                <th>Category</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var exp in expenditureList.OrderByDescending(e => e.Recurring).ThenBy(e => e.Name))
+            {
+                <tr>
+                    <td>@exp.Name</td>
+                    <td>
+                        @if (editingExpenditureId == exp.Id)
+                        {
+                            <InputNumber @bind-Value="editingAmount" class="form-control form-control-sm" />
+                        }
+                        else
+                        {
+                            @exp.Amount.ToString("C")
+                        }
+                    </td>
+                    <td>
+                        @if (editingExpenditureId == exp.Id)
+                        {
+                            <InputDate @bind-Value="editingDate" class="form-control form-control-sm" />
+                        }
+                        else
+                        {
+                            @exp.PaymentDate.ToShortDateString()
+                        }
+                    </td>
+                    <td>
+                        @if (editingExpenditureId == exp.Id)
+                        {
+                            <InputDate @bind-Value="editingStartDate" class="form-control form-control-sm" />
+                        }
+                        else
+                        {
+                            @exp.StartDate?.ToShortDateString()
+                        }
+                    </td>
+                    <td>
+                        @if (editingExpenditureId == exp.Id)
+                        {
+                            <InputDate @bind-Value="editingEndDate" class="form-control form-control-sm" />
+                        }
+                        else
+                        {
+                            @exp.EndDate?.ToShortDateString()
+                        }
+                    </td>
+                    <td>@(exp.Recurring ? "Yes" : "No")</td>
+                    <td>
+                        @if (editingExpenditureId == exp.Id)
+                        {
+                            <InputSelect @bind-Value="editingCategoryId" class="form-control form-control-sm">
+                                <option value="">-- Select --</option>
+                                @foreach (var cat in expenseCategories.Where(c => !c.IsArchived))
+                                {
+                                    <option value="@cat.Id">@cat.Name</option>
+                                }
+                            </InputSelect>
+                        }
+                        else
+                        {
+                            @exp.Category
+                        }
+                    </td>
+                    <td>
+                        @if (editingExpenditureId == exp.Id)
+                        {
+                            <button class="btn btn-success btn-sm" @onclick="() => SaveEdit(exp.Id)">Save</button>
+                            <button class="btn btn-secondary btn-sm" @onclick="CancelEdit">Cancel</button>
+                        }
+                        else
+                        {
+                            <button class="btn btn-primary btn-sm" @onclick="() => StartEdit(exp)">Edit</button>
+                            <button class="btn btn-danger btn-sm" @onclick="() => DeleteExpenditure(exp.Id)">Delete</button>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private int? currentUserId;
+    private List<ExpenseCategory> expenseCategories = [];
+
+    private ExpenditureDto ExpenditureDto = new()
+    {
+        Name = string.Empty,
+        Amount = 0,
+        PaymentDate = DateTime.Today,
+        StartDate = DateTime.Today,
+        EndDate = DateTime.Today.AddYears(1)
+    };
+
+    private int? editingExpenditureId;
+    private DateTime? editingStartDate;
+    private DateTime? editingEndDate;
+    private DateTime? editingDate;
+    private decimal? editingAmount;
+    private int? editingCategoryId;
+
+    private List<ExpenditureDto>? expenditureList;
+    private string _formError = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var user = await CurrentUserService.GetCurrentUserAsync();
+        if (user == null) return;
+
+        currentUserId = user.Id;
+
+        expenseCategories = await Db.ExpenseCategories
+            .Where(c => c.UserId == currentUserId.Value)
+            .OrderBy(c => c.SortOrder)
+            .ToListAsync();
+
+        await LoadExpenditureList();
+    }
+
+    private async Task LoadExpenditureList()
+    {
+        if (!currentUserId.HasValue) return;
+
+        var expenditures = await Db.Expenditures
+            .Include(e => e.Category)
+            .Where(e => e.UserId == currentUserId.Value && e.ExpenseType == (int)CashflowType.Projected)
+            .ToListAsync();
+
+        expenditureList = expenditures.Select(e => new ExpenditureDto
+        {
+            Id = e.Id,
+            Name = e.Name,
+            Amount = e.Amount,
+            PaymentDate = e.PaymentDate,
+            StartDate = e.StartDate,
+            EndDate = e.EndDate,
+            Recurring = e.Recurring,
+            Category = e.Category?.Name ?? "Uncategorized",
+            ExpenseCategoryId = e.ExpenseCategoryId
+        }).ToList();
+    }
+
+    private async Task Submit()
+    {
+        if (string.IsNullOrWhiteSpace(ExpenditureDto.Name))
+        {
+            _formError = "Name is required.";
+            return;
+        }
+        if (ExpenditureDto.Amount <= 0)
+        {
+            _formError = "Amount must be greater than zero.";
+            return;
+        }
+        if (ExpenditureDto.Recurring && ExpenditureDto.EndDate < ExpenditureDto.StartDate)
+        {
+            _formError = "For recurring expenditure, End Date must be on or after Start Date.";
+            return;
+        }
+        if (!currentUserId.HasValue)
+        {
+            _formError = "User not found.";
+            return;
+        }
+
+        var expenditureDb = new DataAccess.Models.Expenditure
+        {
+            UserId = currentUserId.Value,
+            Name = ExpenditureDto.Name,
+            Amount = ExpenditureDto.Amount,
+            PaymentDate = ExpenditureDto.PaymentDate,
+            StartDate = ExpenditureDto.StartDate ?? DateTime.Today,
+            EndDate = ExpenditureDto.EndDate ?? DateTime.Today.AddYears(1),
+            Recurring = ExpenditureDto.Recurring,
+            ExpenseCategoryId = ExpenditureDto.ExpenseCategoryId,
+            ExpenseType = (int)CashflowType.Projected
+        };
+
+        _formError = string.Empty;
+
+        Db.Expenditures.Add(expenditureDb);
+        await Db.SaveChangesAsync();
+
+        ExpenditureDto = new ExpenditureDto
+        {
+            Name = string.Empty,
+            Amount = 0,
+            PaymentDate = DateTime.Today,
+            StartDate = DateTime.Today,
+            EndDate = DateTime.Today.AddYears(1)
+        };
+
+        await LoadExpenditureList();
+    }
+
+    private void StartEdit(ExpenditureDto exp)
+    {
+        editingExpenditureId = exp.Id;
+        editingDate = exp.PaymentDate;
+        editingStartDate = exp.StartDate;
+        editingEndDate = exp.EndDate;
+        editingAmount = exp.Amount;
+        editingCategoryId = exp.ExpenseCategoryId;
+    }
+
+    private void CancelEdit()
+    {
+        editingExpenditureId = null;
+        editingDate = null;
+        editingStartDate = null;
+        editingEndDate = null;
+        editingAmount = null;
+        editingCategoryId = null;
+    }
+
+    private async Task SaveEdit(int id)
+    {
+        var expenditure = await Db.Expenditures.FindAsync(id);
+        if (expenditure != null && editingAmount.HasValue)
+        {
+            expenditure.PaymentDate = editingDate ?? expenditure.PaymentDate;
+            expenditure.StartDate = editingStartDate ?? expenditure.StartDate;
+            expenditure.EndDate = editingEndDate ?? expenditure.EndDate;
+            expenditure.Amount = editingAmount.Value;
+            expenditure.ExpenseCategoryId = editingCategoryId;
+            await Db.SaveChangesAsync();
+
+            await LoadExpenditureList();
+        }
+        CancelEdit();
+    }
+
+    private async Task DeleteExpenditure(int id)
+    {
+        var expenditure = await Db.Expenditures.FindAsync(id);
+        if (expenditure != null)
+        {
+            Db.Expenditures.Remove(expenditure);
+            await Db.SaveChangesAsync();
+            await LoadExpenditureList();
+        }
+    }
+}
+

@@ -1,0 +1,354 @@
+﻿@page "/income"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@using FinancialPlanner.Blazor.Components.Models
+@using FinancialPlanner.Blazor.Components.Models.Enums
+@using FinancialPlanner.Blazor.DataAccess
+@using FinancialPlanner.Blazor.DataAccess.Models
+@using FinancialPlanner.Blazor.Services
+@using Microsoft.EntityFrameworkCore
+@using static FinancialPlanner.Blazor.Components.Models.Enums.Enums
+
+@inject FinanceDbContext Db
+@inject IDbService DbService
+@inject ICurrentUserService CurrentUserService
+
+<PageTitle>Income</PageTitle>
+
+<h3>Add Income</h3>
+
+<EditForm Model="@IncomeDto" OnValidSubmit="Submit" FormName="income-new">
+
+    <div class="mb-3">
+        <label>Name</label>
+        <InputText class="form-control" @bind-Value="IncomeDto.Name" />
+    </div>
+
+    <div class="mb-3">
+        <label>Amount</label>
+        <InputNumber class="form-control" @bind-Value="IncomeDto.Amount" />
+    </div>
+
+    <div class="form-check mb-3">
+        <label class="form-check-label">
+            <InputCheckbox class="form-check-input" @bind-Value="IncomeDto.Recurring" />
+            Recurring
+        </label>
+    </div>
+
+    @if (!IncomeDto.Recurring)
+    {
+        <div class="mb-3">
+            <label>Payment Date</label>
+            <InputDate class="form-control" @bind-Value="IncomeDto.PaymentDate" />
+        </div>
+    }
+    else
+    {
+        <div class="mb-3">
+            <label>Payment Date (day of the month)</label>
+            <InputDate class="form-control" @bind-Value="IncomeDto.PaymentDate" />
+        </div>
+
+        <div class="mb-3">
+            <label>Start Date</label>
+            <InputDate class="form-control" @bind-Value="IncomeDto.StartDate" />
+        </div>
+        <div class="mb-3">
+            <label>End Date</label>
+            <InputDate class="form-control" @bind-Value="IncomeDto.EndDate" />
+        </div>
+    }
+
+    <div class="mb-3">
+        <label>Category</label>
+        <InputSelect class="form-control" @bind-Value="IncomeDto.IncomeCategoryId">
+            <option value="">-- Select Category --</option>
+            @foreach (var category in incomeCategories.Where(c => !c.IsArchived))
+            {
+                <option value="@category.Id">@category.Name</option>
+            }
+        </InputSelect>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Submit</button>
+</EditForm>
+
+@if (!string.IsNullOrEmpty(_formError))
+{
+    <div class="alert alert-danger mb-3 mt-3">@_formError</div>
+}
+
+<h4 class="mt-4">All Income Entries</h4>
+
+@if (incomeList == null)
+{
+    <p>Loading...</p>
+}
+else if (!incomeList.Any())
+{
+    <p>No income entries found.</p>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Amount</th>
+                <th>Start Date</th>
+                <th>End Date</th>
+                <th>Recurring</th>
+                <th>Payment Date</th>
+                <th>Category</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var income in incomeList)
+            {
+                <tr>
+                    <td>@income.Name</td>
+                    <td>
+                        @if (editingIncomeId == income.Id)
+                        {
+                            <InputNumber @bind-Value="editingAmount" class="form-control form-control-sm" />
+                        }
+                        else
+                        {
+                            @income.Amount.ToString("C")
+                        }
+                    </td>
+                    <td>
+                        @if (editingIncomeId == income.Id)
+                        {
+                            <InputDate @bind-Value="editingStartDate" class="form-control form-control-sm" />
+                        }
+                        else
+                        {
+                            @income.StartDate?.ToShortDateString()
+                        }
+                    </td>
+                    <td>
+                        @if (editingIncomeId == income.Id)
+                        {
+                            <InputDate @bind-Value="editingEndDate" class="form-control form-control-sm" />
+                        }
+                        else
+                        {
+                            @income.EndDate?.ToShortDateString()
+                        }
+                    </td>
+                    <td>@(income.Recurring ? "Yes" : "No")</td>
+                    <td>
+                        @if (editingIncomeId == income.Id)
+                        {
+                            <InputDate @bind-Value="editingPaymentDate" class="form-control form-control-sm" />
+                        }
+                        else
+                        {
+                            @income.PaymentDate.ToShortDateString()
+                        }
+                    </td>
+                    <td>
+                        @if (editingIncomeId == income.Id)
+                        {
+                            <InputSelect @bind-Value="editingCategoryId" class="form-control form-control-sm">
+                                <option value="">-- Select --</option>
+                                @foreach (var cat in incomeCategories.Where(c => !c.IsArchived))
+                                {
+                                    <option value="@cat.Id">@cat.Name</option>
+                                }
+                            </InputSelect>
+                        }
+                        else
+                        {
+                            @income.Category
+                        }
+                    </td>
+                    <td>
+                        @if (editingIncomeId == income.Id)
+                        {
+                            <button class="btn btn-success btn-sm" @onclick="() => SaveEdit(income.Id)">Save</button>
+                            <button class="btn btn-secondary btn-sm" @onclick="CancelEdit">Cancel</button>
+                        }
+                        else
+                        {
+                            <button class="btn btn-primary btn-sm" @onclick="() => StartEdit(income)">Edit</button>
+                            <button class="btn btn-danger btn-sm" @onclick="() => DeleteIncome(income.Id)">Delete</button>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private int? currentUserId;
+    private List<IncomeCategory> incomeCategories = [];
+
+    private int? editingIncomeId;
+    private decimal? editingAmount;
+    private DateTime? editingEndDate;
+    private DateTime? editingPaymentDate;
+    private DateTime? editingStartDate;
+    private int? editingCategoryId;
+
+    private List<IncomeDto>? incomeList;
+    private string _formError = string.Empty;
+
+    private IncomeDto IncomeDto = new()
+    {
+        Name = string.Empty,
+        Amount = 0,
+        StartDate = DateTime.Today,
+        EndDate = DateTime.Today.AddYears(1),
+        PaymentDate = DateTime.Today
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        var user = await CurrentUserService.GetCurrentUserAsync();
+        if (user == null) return;
+
+        currentUserId = user.Id;
+
+        // Load categories for the current user
+        incomeCategories = await Db.IncomeCategories
+            .Where(c => c.UserId == currentUserId.Value)
+            .OrderBy(c => c.SortOrder)
+            .ToListAsync();
+
+        await LoadIncomeList();
+    }
+
+    private async Task LoadIncomeList()
+    {
+        if (!currentUserId.HasValue) return;
+
+        var incomes = await Db.Incomes
+            .Include(i => i.Category)
+            .Where(i => i.UserId == currentUserId.Value)
+            .ToListAsync();
+
+        incomeList = incomes.Select(i => new IncomeDto
+        {
+            Id = i.Id,
+            Name = i.Name,
+            Amount = i.Amount,
+            StartDate = i.StartDate,
+            EndDate = i.EndDate,
+            PaymentDate = i.PaymentDate,
+            Recurring = i.Recurring,
+            Category = i.Category?.Name ?? "Uncategorized",
+            IncomeCategoryId = i.IncomeCategoryId
+        }).ToList();
+    }
+
+    private async Task Submit()
+    {
+        if (string.IsNullOrWhiteSpace(IncomeDto.Name))
+        {
+            _formError = "Name is required.";
+            return;
+        }
+        if (IncomeDto.Amount <= 0)
+        {
+            _formError = "Amount must be greater than zero.";
+            return;
+        }
+        if (IncomeDto.Recurring && IncomeDto.EndDate < IncomeDto.StartDate)
+        {
+            _formError = "For recurring income, End Date must be on or after Start Date.";
+            return;
+        }
+        if (!IncomeDto.StartDate.HasValue || !IncomeDto.EndDate.HasValue)
+        {
+            _formError = "Dates are required.";
+            return;
+        }
+        if (!currentUserId.HasValue)
+        {
+            _formError = "User not found.";
+            return;
+        }
+
+        var incomeDb = new DataAccess.Models.Income
+        {
+            UserId = currentUserId.Value,
+            Name = IncomeDto.Name,
+            Amount = IncomeDto.Amount,
+            StartDate = IncomeDto.StartDate.Value,
+            EndDate = IncomeDto.EndDate.Value,
+            PaymentDate = IncomeDto.PaymentDate,
+            Recurring = IncomeDto.Recurring,
+            IncomeCategoryId = IncomeDto.IncomeCategoryId
+        };
+
+        _formError = string.Empty;
+
+        Db.Incomes.Add(incomeDb);
+        await Db.SaveChangesAsync();
+
+        // Reset form
+        IncomeDto = new IncomeDto
+        {
+            Name = string.Empty,
+            Amount = 0,
+            StartDate = DateTime.Today,
+            EndDate = DateTime.Today.AddYears(1),
+            PaymentDate = DateTime.Today
+        };
+
+        await LoadIncomeList();
+    }
+
+    private void StartEdit(IncomeDto income)
+    {
+        editingIncomeId = income.Id;
+        editingAmount = income.Amount;
+        editingStartDate = income.StartDate;
+        editingEndDate = income.EndDate;
+        editingPaymentDate = income.PaymentDate;
+        editingCategoryId = income.IncomeCategoryId;
+    }
+
+    private void CancelEdit()
+    {
+        editingIncomeId = null;
+        editingAmount = null;
+        editingStartDate = null;
+        editingEndDate = null;
+        editingPaymentDate = null;
+        editingCategoryId = null;
+    }
+
+    private async Task SaveEdit(int id)
+    {
+        var income = await Db.Incomes.FindAsync(id);
+        if (income != null && editingAmount.HasValue)
+        {
+            income.Amount = editingAmount.Value;
+            income.StartDate = editingStartDate;
+            income.EndDate = editingEndDate ?? income.EndDate;
+            income.PaymentDate = editingPaymentDate ?? income.PaymentDate;
+            income.IncomeCategoryId = editingCategoryId;
+            await Db.SaveChangesAsync();
+
+            await LoadIncomeList();
+        }
+        CancelEdit();
+    }
+
+    private async Task DeleteIncome(int id)
+    {
+        var income = await Db.Incomes.FindAsync(id);
+        if (income != null)
+        {
+            Db.Incomes.Remove(income);
+            await Db.SaveChangesAsync();
+            await LoadIncomeList();
+        }
+    }
+}
