@@ -1,14 +1,11 @@
-# Build
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 WORKDIR /src
 COPY . .
-RUN dotnet restore
-RUN dotnet publish -c Release -o /app/publish
+RUN dotnet publish src/FinancialPlanner.Blazor/FinancialPlanner.Blazor/FinancialPlanner.Blazor.csproj -c Release -o /app/publish /p:UseAppHost=false
 
-# Run
 FROM mcr.microsoft.com/dotnet/aspnet:9.0
 WORKDIR /app
 COPY --from=build /app/publish .
-ENV ASPNETCORE_URLS=http://+:8080
-EXPOSE 8080
-ENTRYPOINT ["dotnet", "FinancePlanner.dll"]
+ENV ASPNETCORE_URLS=http://+:80
+EXPOSE 80
+ENTRYPOINT ["dotnet","FinancialPlanner.Blazor.dll"]
