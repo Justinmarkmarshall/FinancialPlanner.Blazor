@@ -18,12 +18,17 @@ spec:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: ConnectionStrings__FinanceDb
+              value: "{{ .Values.connectionStrings.financeDb }}"
+          envFrom:
+            - secretRef:
+                name: financialplanner-secrets    
           ports:
             - containerPort: 80
           volumeMounts:
             - name: finance-db-volume
-              mountPath: /app/data/finance.db
-              subPath: finance.db
+              mountPath: /app/data
       volumes:
         - name: finance-db-volume
           persistentVolumeClaim:

@@ -1,11 +1,12 @@
 replicaCount: 1
 image:
-  repository: ghcr.io/justinmarkmarshall/fplbot/financialplanner
-  tag: latest
+  repository: ghcr.io/justinmarkmarshall/financialplanner.blazor
+  tag: sha-4265ac1
   pullPolicy: IfNotPresent
 service:
   type: ClusterIP
   port: 80
-# financeDb:
-#   existingClaim: finance-db-pvc
-#   mountPath: /app/data/finance.db
+connectionStrings:
+  financeDb: "Data Source=/app/data/finance.db"
+storage:
+  className: ""
