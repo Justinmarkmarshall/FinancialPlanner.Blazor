@@ -60,6 +60,9 @@ namespace FinancialPlanner.Blazor
                     options.ExpireTimeSpan = TimeSpan.FromDays(7);
                     options.SlidingExpiration = true;
 
+                    options.Cookie.SameSite = SameSiteMode.Lax;
+                    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+
                     // Validate session on every request (Pattern B)
                     options.Events.OnValidatePrincipal = async context =>
                     {
@@ -89,6 +92,9 @@ namespace FinancialPlanner.Blazor
                     options.Cookie.Name = "FinancialPlanner.External";
                     options.ExpireTimeSpan = TimeSpan.FromMinutes(5);
                     options.SlidingExpiration = false;
+
+                    options.Cookie.SameSite = SameSiteMode.None;         // IMPORTANT for OAuth round-trip
+                    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
                 })
                 .AddGoogle("Google", options =>
                 {
@@ -110,6 +116,10 @@ namespace FinancialPlanner.Blazor
                 options.ForwardedHeaders = ForwardedHeaders.XForwardedFor
                                          | ForwardedHeaders.XForwardedProto
                                          | ForwardedHeaders.XForwardedHost;
+
+                // In private cloud you'll often need this because the proxy IP won't match "known" networks
+                options.KnownNetworks.Clear();
+                options.KnownProxies.Clear();
             });
 
             var app = builder.Build();
@@ -123,7 +133,11 @@ namespace FinancialPlanner.Blazor
 
             // these need to be known networks/proxies when deployed.
             app.UseForwardedHeaders();
-            app.UseHttpsRedirection();
+            
+            // on private cloud, Cloudflare terminates TLS, then talks to origin.
+            // if cloudflare connects to the origin over HTTP, UseHttpsRedirection() can create confusing loops
+            // so remove this when running in the cluster
+            //app.UseHttpsRedirection();
 
             // cookies auth and map endpoints behave best with routing enabled
             app.UseRouting();
