@@ -2,7 +2,7 @@ replicaCount: 1
 image:
   repository: ghcr.io/justinmarkmarshall/financialplanner.blazor
   tag: latest
-  pullPolicy: IfNotPresent
+  pullPolicy: Always
 service:
   type: ClusterIP
   port: 80

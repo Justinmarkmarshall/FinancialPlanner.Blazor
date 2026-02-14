@@ -5,8 +5,10 @@ using FinancialPlanner.Blazor.DataAccess.Models;
 using FinancialPlanner.Blazor.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
+using SQLitePCL;
 using System.Security.Claims;
 
 namespace FinancialPlanner.Blazor
@@ -110,6 +112,11 @@ namespace FinancialPlanner.Blazor
             builder.Services.AddAuthorization();
             builder.Services.AddCascadingAuthenticationState();
 
+            // presist them to storage so they survive app restarts - important in private cloud where pods can restart and lose in-memory keys, causing all cookies to be invalidated.            
+            builder.Services.AddDataProtection()
+                .PersistKeysToFileSystem(new DirectoryInfo("/app/data/dp-keys"));
+
+
             // If you're behind ingress/proxy later, this avoids callback URL weirdness:
             builder.Services.Configure<ForwardedHeadersOptions>(options =>
             {
@@ -130,6 +137,17 @@ namespace FinancialPlanner.Blazor
                 app.UseExceptionHandler("/Error");
                 app.UseHsts();
             }
+
+            if (!app.Environment.IsEnvironment("Testing"))
+            {
+                // Apply pending migrations on startup - by default wil apply all the Migrations.Local - should be fine.
+                using (var scope = app.Services.CreateScope())
+                {
+                    var db = scope.ServiceProvider.GetRequiredService<FinanceDbContext>();
+                    db.Database.Migrate();
+                }
+            }
+            
 
             // these need to be known networks/proxies when deployed.
             app.UseForwardedHeaders();
