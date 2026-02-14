@@ -133,7 +133,22 @@ namespace FinancialPlanner.Blazor
 
             // these need to be known networks/proxies when deployed.
             app.UseForwardedHeaders();
-            
+
+            // test endpoint to verify forwarded headers are working in private cloud - check logs for the output
+            app.Use(async (ctx, next) =>
+            {
+                if (ctx.Request.Path.StartsWithSegments("/signin-google"))
+                {
+                    app.Logger.LogInformation("scheme={Scheme} host={Host} xfp={XFP} xfh={XFH}",
+                        ctx.Request.Scheme,
+                        ctx.Request.Host.Value,
+                        ctx.Request.Headers["X-Forwarded-Proto"].ToString(),
+                        ctx.Request.Headers["X-Forwarded-Host"].ToString());
+                }
+                await next();
+            });
+
+
             // on private cloud, Cloudflare terminates TLS, then talks to origin.
             // if cloudflare connects to the origin over HTTP, UseHttpsRedirection() can create confusing loops
             // so remove this when running in the cluster
