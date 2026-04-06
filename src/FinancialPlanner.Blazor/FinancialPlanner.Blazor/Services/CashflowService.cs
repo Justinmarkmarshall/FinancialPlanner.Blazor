@@ -32,8 +32,8 @@ namespace FinancialPlanner.Blazor.Services
                     if (!item.StartDate.HasValue || !item.EndDate.HasValue)
                         continue;
 
-                    // if recurring, then the month start and end date must be within the expenditure start and end date
-                    if (item.StartDate <= month.StartDate && item.EndDate >= month.EndDate)
+                    // include recurring item when the expenditure range overlaps the month range (inclusive)
+                    if (item.StartDate.Value <= month.EndDate && item.EndDate.Value >= month.StartDate)
                     {
                         monthCashflow.Add(item);
                     }

@@ -242,6 +242,20 @@ namespace FinancialPlanner.Blazor.Services
             return true;
         }
 
+        // New: persist monthly actual savings
+        public bool UpdateMonthActuals(int monthId, decimal actualSavings)
+        {
+            var month = financeDbContext.Months.Find(monthId);
+            if (month == null)
+            {
+                return false;
+            }
+
+            month.ActualSavings = actualSavings;
+            financeDbContext.SaveChanges();
+            return true;
+        }
+
         public BankStatementDto GetBankStatementForMonth(int monthId)
         {
             var bankStatements = financeDbContext.BankStatements
@@ -289,5 +303,8 @@ namespace FinancialPlanner.Blazor.Services
         public bool UpdateMonthNotes(int monthId, string notes);
 
         public BankStatementDto GetBankStatementForMonth(int monthId);
+
+        // New: save monthly actual savings (persist ActualSavings)
+        public bool UpdateMonthActuals(int monthId, decimal actualSavings);
     }
 }
