@@ -1,4 +1,7 @@
-﻿namespace FinancialPlanner.Blazor.Components.Models
+﻿using System;
+using System.Collections.Generic;
+
+namespace FinancialPlanner.Blazor.Components.Models
 {
     public class MonthDto
     {
@@ -30,10 +33,21 @@
 
         public decimal ActualTotalIncome { get; set; }
 
+        // Stored monthly actual savings (can be loaded from DB)
         public decimal ActualSavings { get; set; }
 
+        // Legacy field (kept for existing code that references it)
         public decimal RunningTotalSavings { get; set; }
 
         public string Notes { get; set; } = string.Empty;
+
+        // Computed: projected running total (previous actual running total + projected savings)
+        public decimal RunningTotalProjected { get; set; }
+
+        // Computed / editable: actual running total
+        public decimal RunningTotalActual { get; set; }
+
+        // Mark if user edited the RunningTotalActual for this month
+        public bool IsRunningTotalEdited { get; set; } = false;
     }
 }

@@ -87,7 +87,8 @@ else
                     <th>Projected Total Income</th>
                     <th>Projected Total Expenditure</th>
                     <th>Projected Savings</th>
-                    <th>Running Total</th>
+                    <th>Projected Running Total</th>
+                    <th>Actual Running Total (current month editable)</th>
                 </tr>
             </thead>
             <tbody>
@@ -99,10 +100,23 @@ else
                         <td>@month.ProjectedTotalIncome.ToString("C")</td>
                         <td>@month.ProjectedTotalExpenditure.ToString("C")</td>
                         <td>@month.ProjectedSavings.ToString("C")</td>
-                        <td>@month.RunningTotalSavings.ToString("C")</td>
+                        <td>@month.RunningTotalProjected.ToString("C")</td>
+                        <td>
+                            @if (IsCurrentMonth(month))
+                            {
+                                <div class="d-flex gap-1 align-items-center">
+                                    <InputNumber class="form-control form-control-sm" @bind-Value="month.RunningTotalActual" style="width:140px" />
+                                    <button class="btn btn-sm btn-primary" @onclick="() => SaveRunningTotalAsync(month)">Save</button>
+                                </div>
+                            }
+                            else
+                            {
+                                <span>&nbsp;</span> <!-- empty for non-current months -->
+                            }
+                        </td>
                     </tr>
                     <tr>
-                        <td colspan="6">
+                        <td colspan="8">
                             <strong>Expenditure by Category (% of Income):</strong>
                             <ul class="mb-2">
                                 @foreach (var cat in GetCategoryPercentages(month))
@@ -146,7 +160,8 @@ else
     private bool isEditingNotes = false;
     private string editingNotes = string.Empty;
 
-    private decimal runningTotal = 400;
+    // base starting running total used previously
+    private decimal baseRunningTotal = 400;
 
     protected override async Task OnInitializedAsync()
     {
@@ -175,7 +190,12 @@ else
                     ProjectedSavings = month.ProjectedSavings,
                     ProjectedTotalExpenditure = month.ProjectedTotalExpenditure,
                     ProjectedTotalIncome = month.ProjectedTotalIncome,
-                    Notes = month.Notes
+                    Notes = month.Notes,
+                    ActualSavings = month.ActualSavings, // persisted actuals if present
+                    ActualTotalIncome = month.ActualTotalIncome,
+                    ActualTotalExpenditure = month.ActualTotalExpenditure,
+                    // RunningTotalActual will be computed for current month in RecalculateRunningTotals
+                    RunningTotalActual = 0m
                 };
 
                 monthDto.ProjectedExpenditures = CashflowService.GetCashflowForMonth(monthDto, expenditures.Cast<CashflowDto>().ToList())
@@ -189,14 +209,16 @@ else
                 monthDto.ProjectedTotalIncome = monthDto.ProjectedIncomes.Sum(i => i.Amount);
 
                 monthDto.ProjectedSavings = monthDto.ProjectedTotalIncome - monthDto.ProjectedTotalExpenditure;
-                monthDto.RunningTotalSavings = runningTotal + monthDto.ProjectedSavings;
 
-                runningTotal += monthDto.ProjectedSavings;
+                // legacy field
+                monthDto.RunningTotalSavings = 0m;
 
+                // --- restore current-month calculations so bankBalanceForToday gets set ---
                 if (month.StartDate.Date <= today.Date && month.EndDate.Date >= today.Date)
                 {
                     currentMonthDto = monthDto;
 
+                    // Food budget splitting (same logic as before)
                     var foodBudget = monthDto.ProjectedExpenditures
                         .Where(e => e.Category == CategoryType.Groceries.ToString())
                         .Sum(e => e.Amount);
@@ -243,21 +265,131 @@ else
                         }
                     }
 
+                    // Income up to today: include recurring incomes that overlap the month (inclusive) or non-recurring incomes that fall between month start and today
                     var incomeByToday = await DbContext.Incomes
                         .Where(i => i.UserId == currentUser.Id &&
-                            ((i.Recurring && i.StartDate <= monthDto.StartDate && i.EndDate >= monthDto.EndDate) ||
+                            ((i.Recurring && i.StartDate <= monthDto.EndDate && i.EndDate >= monthDto.StartDate) ||
                             (!i.Recurring && i.StartDate <= today.Date && i.StartDate >= monthDto.StartDate)))
                         .SumAsync(i => (decimal?)i.Amount) ?? 0;
 
                     bankBalanceForToday = incomeByToday - expendituresPaidByToday.Sum(e => e.Amount);
                 }
+                // --- end restored block ---
 
                 monthDtos.Add(monthDto);
             }
+
+            // determine current month DTO reference (used elsewhere)
+            currentMonthDto ??= monthDtos.FirstOrDefault(m => m.StartDate.Date <= today.Date && m.EndDate.Date >= today.Date);
+
+            // compute running totals per the new rules
+            RecalculateRunningTotals();
         }
         finally
         {
             isLoading = false;
+        }
+    }
+
+    private bool IsCurrentMonth(MonthDto m) =>
+        m.StartDate.Date <= today.Date && m.EndDate.Date >= today.Date;
+
+    private void RecalculateRunningTotals()
+    {
+        // Ordered months by StartDate
+        var ordered = monthDtos.OrderBy(m => m.StartDate).ToList();
+
+        // index of current month
+        var currentIndex = ordered.FindIndex(m => IsCurrentMonth(m));
+
+        // previousProjectedRunning starts at baseRunningTotal
+        decimal previousProjectedRunning = baseRunningTotal;
+
+        for (int i = 0; i < ordered.Count; i++)
+        {
+            var month = ordered[i];
+
+            if (currentIndex != -1 && i == currentIndex + 1)
+            {
+                // Next month after current: use current month's actual running total as base if available, otherwise fall back to previous projected
+                decimal baseForThisProjected = previousProjectedRunning;
+                if (currentIndex >= 0)
+                {
+                    var currentMonth = ordered[currentIndex];
+                    if (currentMonth.RunningTotalActual != 0m)
+                    {
+                        baseForThisProjected = currentMonth.RunningTotalActual;
+                    }
+                }
+                month.RunningTotalProjected = baseForThisProjected + month.ProjectedSavings;
+            }
+            else
+            {
+                // Default: use last month's projected running total
+                month.RunningTotalProjected = previousProjectedRunning + month.ProjectedSavings;
+            }
+
+            // set previousProjectedRunning for next iteration
+            previousProjectedRunning = month.RunningTotalProjected;
+
+            // Actual running totals: only current month shows/holds an actual value.
+            if (i == currentIndex)
+            {
+                // If there is a persisted ActualSavings, compute running actual; otherwise leave 0 (empty)
+                if (month.ActualSavings != 0m || month.IsRunningTotalEdited)
+                {
+                    decimal previousProjected = (i == 0) ? baseRunningTotal : ordered[i - 1].RunningTotalProjected;
+                    month.RunningTotalActual = previousProjected + month.ActualSavings;
+                }
+                // else leave RunningTotalActual = 0 so UI appears empty
+            }
+            else
+            {
+                // Non-current months: clear editable actual in-memory (show empty)
+                month.RunningTotalActual = 0m;
+            }
+
+            // maintain legacy field as projected for compatibility
+            month.RunningTotalSavings = month.RunningTotalProjected;
+        }
+
+        // preserve ordering
+        monthDtos = ordered;
+        StateHasChanged();
+    }
+
+    private async Task SaveRunningTotalAsync(MonthDto changedMonth)
+    {
+        // Only allow saving for current month
+        if (!IsCurrentMonth(changedMonth))
+            return;
+
+        var ordered = monthDtos.OrderBy(m => m.StartDate).ToList();
+        var index = ordered.FindIndex(m => m.Id == changedMonth.Id);
+        if (index < 0)
+            return;
+
+        // previousProjected for this month is previous month's projected running total (or base)
+        decimal previousProjected = (index == 0) ? baseRunningTotal : ordered[index - 1].RunningTotalProjected;
+
+        // derive actual savings from edited running total (running actual - previous projected)
+        var actualSavings = changedMonth.RunningTotalActual - previousProjected;
+
+        // persist actual savings
+        var saved = await Task.Run(() => DbService.UpdateMonthActuals(changedMonth.Id, actualSavings));
+
+        if (saved)
+        {
+            // update in-memory and mark as edited so future recalculation uses it
+            changedMonth.ActualSavings = actualSavings;
+            changedMonth.IsRunningTotalEdited = true;
+
+            // recompute running totals so next month projection uses this month's actual running total
+            RecalculateRunningTotals();
+        }
+        else
+        {
+            // no-op for now; UI notification could be added
         }
     }
 
