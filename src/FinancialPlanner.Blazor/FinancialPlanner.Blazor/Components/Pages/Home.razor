@@ -213,11 +213,74 @@ else
                 // legacy field
                 monthDto.RunningTotalSavings = 0m;
 
+                // --- restore current-month calculations so bankBalanceForToday gets set ---
+                if (month.StartDate.Date <= today.Date && month.EndDate.Date >= today.Date)
+                {
+                    currentMonthDto = monthDto;
+
+                    // Food budget splitting (same logic as before)
+                    var foodBudget = monthDto.ProjectedExpenditures
+                        .Where(e => e.Category == CategoryType.Groceries.ToString())
+                        .Sum(e => e.Amount);
+                    var daysInMonth = DateTime.DaysInMonth(today.Year, today.Month);
+                    var dailyFoodBudget = daysInMonth > 0 ? foodBudget / daysInMonth : 0;
+
+                    expendituresPaidByToday.Add(new ExpenditureDto
+                    {
+                        Name = "Food Budget Used",
+                        Amount = dailyFoodBudget * today.Day,
+                        PaymentDate = today,
+                        StartDate = monthDto.StartDate,
+                        EndDate = monthDto.EndDate,
+                        Recurring = false,
+                        Category = CategoryType.Groceries.ToString()
+                    });
+
+                    expendituresBeforeMonthEnd.Add(new ExpenditureDto
+                    {
+                        Name = "Food Budget Remaining",
+                        Amount = dailyFoodBudget * (daysInMonth - today.Day),
+                        PaymentDate = today,
+                        StartDate = monthDto.StartDate,
+                        EndDate = monthDto.EndDate,
+                        Recurring = false,
+                        Category = CategoryType.Groceries.ToString()
+                    });
+
+                    foreach (var exp in monthDto.ProjectedExpenditures.OrderBy(r => r.StartDate?.Day ?? 0))
+                    {
+                        if (exp.PaymentDate.Day > today.Day && exp.PaymentDate.Day <= monthDto.EndDate.Day)
+                        {
+                            if (exp.Category != CategoryType.Groceries.ToString())
+                            {
+                                expendituresBeforeMonthEnd.Add(exp);
+                            }
+                        }
+                        else if (exp.PaymentDate.Day <= today.Day && exp.PaymentDate.Day >= monthDto.StartDate.Day)
+                        {
+                            if (exp.Category != CategoryType.Groceries.ToString())
+                            {
+                                expendituresPaidByToday.Add(exp);
+                            }
+                        }
+                    }
+
+                    // Income up to today: include recurring incomes that overlap the month (inclusive) or non-recurring incomes that fall between month start and today
+                    var incomeByToday = await DbContext.Incomes
+                        .Where(i => i.UserId == currentUser.Id &&
+                            ((i.Recurring && i.StartDate <= monthDto.EndDate && i.EndDate >= monthDto.StartDate) ||
+                            (!i.Recurring && i.StartDate <= today.Date && i.StartDate >= monthDto.StartDate)))
+                        .SumAsync(i => (decimal?)i.Amount) ?? 0;
+
+                    bankBalanceForToday = incomeByToday - expendituresPaidByToday.Sum(e => e.Amount);
+                }
+                // --- end restored block ---
+
                 monthDtos.Add(monthDto);
             }
 
             // determine current month DTO reference (used elsewhere)
-            currentMonthDto = monthDtos.FirstOrDefault(m => m.StartDate.Date <= today.Date && m.EndDate.Date >= today.Date);
+            currentMonthDto ??= monthDtos.FirstOrDefault(m => m.StartDate.Date <= today.Date && m.EndDate.Date >= today.Date);
 
             // compute running totals per the new rules
             RecalculateRunningTotals();
