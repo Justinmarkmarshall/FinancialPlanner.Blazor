@@ -1,4 +1,5 @@
-﻿using FinancialPlanner.Blazor.Components;
+using Marshall.Authentication.Google;
+using FinancialPlanner.Blazor.Components;
 using FinancialPlanner.Blazor.Components.Pages;
 using FinancialPlanner.Blazor.DataAccess;
 using FinancialPlanner.Blazor.DataAccess.Models;
@@ -16,14 +17,8 @@ namespace FinancialPlanner.Blazor
 {
     public class Program
     {
-
-
         public static void Main(string[] args)
         {
-
-            const string AppCookieScheme = CookieAuthenticationDefaults.AuthenticationScheme; // "Cookies"
-            const string ExternalScheme = "External";
-
             var builder = WebApplication.CreateBuilder(args);
 
             // Add services to the container.
@@ -41,75 +36,19 @@ namespace FinancialPlanner.Blazor
             builder.Services.AddScoped<ISessionService, SessionService>();
             builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 
-            // Google Auth
-            // Most apps do this:
-            // Unauthenticated request → redirect to / login
-            // User clicks “Continue with Google” on / login → then challenge Google
-            // That means:
-            // Default challenge scheme should be Cookie, not Google.
-            builder.Services
-                .AddAuthentication(options =>
+            builder.Services.AddGoogleSessionAuthentication<FinancialPlannerGoogleSessionHandler>(
+                google =>
                 {
-                    options.DefaultScheme = AppCookieScheme;
-                    // default chalnge scheme is cookie to avoid immediate redirect to Google on unauthenticated requests and instead go to /login
-                    // that way users trigger the Google challenge themselves
-                    options.DefaultChallengeScheme = AppCookieScheme;
-                })
-                .AddCookie(AppCookieScheme, options =>
+                    google.ClientId = builder.Configuration["Authentication:Google:ClientId"]
+                        ?? throw new InvalidOperationException("Missing Authentication:Google:ClientId");
+                    google.ClientSecret = builder.Configuration["Authentication:Google:ClientSecret"]
+                        ?? throw new InvalidOperationException("Missing Authentication:Google:ClientSecret");
+                },
+                options =>
                 {
-                    options.Cookie.Name = "FinancialPlanner.Auth";
-                    options.LoginPath = "/login";
-                    options.LogoutPath = "/logout";
-                    options.ExpireTimeSpan = TimeSpan.FromDays(7);
-                    options.SlidingExpiration = true;
-
-                    options.Cookie.SameSite = SameSiteMode.Lax;
-                    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
-
-                    // Validate session on every request (Pattern B)
-                    options.Events.OnValidatePrincipal = async context =>
-                    {
-                        var sessionIdClaim = context.Principal?.FindFirstValue("app_session_id");
-                        var userIdClaim = context.Principal?.FindFirstValue("app_user_id");
-
-                        if (!Guid.TryParse(sessionIdClaim, out var sessionId) ||
-                            !int.TryParse(userIdClaim, out var userId))
-                        {
-                            context.RejectPrincipal();
-                            await context.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-                            return;
-                        }
-
-                        var sessionService = context.HttpContext.RequestServices.GetRequiredService<ISessionService>();
-                        var session = await sessionService.ValidateSessionAsync(sessionId);
-
-                        if (session == null || session.UserId != userId)
-                        {
-                            context.RejectPrincipal();
-                            await context.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-                        }
-                    };
-                })
-                .AddCookie(ExternalScheme, options =>
-                {
-                    options.Cookie.Name = "FinancialPlanner.External";
-                    options.ExpireTimeSpan = TimeSpan.FromMinutes(5);
-                    options.SlidingExpiration = false;
-
-                    options.Cookie.SameSite = SameSiteMode.None;         // IMPORTANT for OAuth round-trip
-                    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
-                })
-                .AddGoogle("Google", options =>
-                {
-                    options.ClientId = builder.Configuration["Authentication:Google:ClientId"]
-                            ?? throw new InvalidOperationException("Missing Authentication:Google:ClientId");
-                    options.ClientSecret = builder.Configuration["Authentication:Google:ClientSecret"]
-                            ?? throw new InvalidOperationException("Missing Authentication:Google:ClientSecret");
-
-                    // this line uses the temporary cookie scheme to store info from Google during the auth process
-                    options.SignInScheme = ExternalScheme;
+                    options.ApplicationCookieName = "FinancialPlanner.Auth";
+                    options.ExternalCookieName = "FinancialPlanner.External";
                 });
-
             builder.Services.AddAuthorization();
             builder.Services.AddCascadingAuthenticationState();
 
@@ -191,7 +130,7 @@ namespace FinancialPlanner.Blazor
             app.UseAntiforgery();
 
             // Map authentication endpoints
-            FinancialPlanner.Blazor.Endpoints.AuthEndpoints.MapAuthEndpoints(app);
+            app.MapGoogleSessionEndpoints();
 
             // Test endpoints (only available in Testing environment)
             if (app.Environment.IsEnvironment("Testing"))
@@ -247,8 +186,9 @@ namespace FinancialPlanner.Blazor
             //writes external cookie for testing external signin
             app.MapPost("/_test/external-signin", async (HttpContext ctx) =>
             {
-                const string ExternalScheme = "External";
+    
 
+                const string ExternalScheme = "External";
                 var claims = new List<Claim>
                 {
                     new Claim(ClaimTypes.NameIdentifier, "google-sub-test-123"),
@@ -265,3 +205,4 @@ namespace FinancialPlanner.Blazor
         }
     }
 }
+
